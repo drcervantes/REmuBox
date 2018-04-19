@@ -12,21 +12,26 @@ key = b'ajkhUoSDyYDMGgARPrqdTR5JZRMz8S3YoNYgAwGkw8Q='
 f = Fernet(key)
 
 def build_url(ip, port, method, **kwargs):
-	url = "http://{ip}:{port}/{method}?".format(ip=ip, port=port, method=method)
+	url_base = "http://{ip}:{port}/".format(ip=ip, port=port)
+	query = "{}?".format(method)
+
 	for k,v in kwargs.items():
 		param = json.dumps(v)
 		param = quote_plus(param)
-		url += k + "=" + param + "&"
-	return url[:-1]
+		query += k + "=" + param + "&"
 
-async def _request_data(self, url):
+	enc_query = f.encrypt(query[:-1].encode())
+	url = url_base + enc_query.decode()
+	return url
+
+async def _request_data(url):
 	session = aiohttp.ClientSession()
 	response = await session.get(url=url)
 	content = await response.read()
 	session.close()
 	return content.decode("utf-8")
 
-def request(url, timeout=5):
+def request(url, worker, timeout=5):
 	"""Sends an http request asychronously so as to not block the manager web service. 
 	Used to communicate with the other subsystems.
 
@@ -38,8 +43,7 @@ def request(url, timeout=5):
 		A string containing the result from the resulting web service view.
 	"""
 	try:
-		enc_url = f.encrypt(url.encode())
-		future = asyncio.run_coroutine_threadsafe(_request_data(enc_url), worker_loop)
+		future = asyncio.run_coroutine_threadsafe(_request_data(url), worker)
 		result = future.result(timeout)
 	except asyncio.TimeoutError:
 		log.debug("Request to " + url + " timed out.")
@@ -58,4 +62,5 @@ def create_worker():
 	worker_loop = asyncio.new_event_loop()
 	worker = Thread(target=_start_worker, args=(worker_loop,))
 	worker.start()
+	return worker_loop
 

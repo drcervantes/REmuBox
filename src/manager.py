@@ -9,11 +9,17 @@ log = logging.getLogger(__name__)
 
 class Manager():
 	def __init__(self, config=None, server=None, nginx=None):
-		db.connect_db()
+		self.server = server
+		self.nginx = nginx
 
-		if server:
-			self.server = server
-			db.insert_server("127.0.0.1")
+		self.worker = remote.create_worker()
+
+		# db.connect_db()
+
+		# if server:
+		# 	self.server = server
+		# 	db.insert_server("127.0.0.1")
+		self.add_nginx_entry('SISSY', '192.168.1.3', [50000,50001])
 
 
 	def start_session(self, workshop):
@@ -105,10 +111,10 @@ class Manager():
 		return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(length))
 	
 
-	def add_nginx_entry(self, session, server, port):
+	def add_nginx_entry(self, session, server, ports):
 		if self.nginx:
-			self.nginx.add_rdp_entry(session, server, port)
+			self.nginx.add_rdp_entry(session, server, ports)
 		else:
-			url = remote.build_url(server, server_port, "add_rdp_entry", workshop=workshop)
-			ports = remote.request_data(url)
+			url = remote.build_url('192.168.1.2', 5000, "add_mapping", session=session, server=server, ports=ports)
+			ports = remote.request(url, self.worker)
 

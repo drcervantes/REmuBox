@@ -10,7 +10,7 @@ from urllib.parse import urlparse, parse_qsl
 from ast import literal_eval
 import util
 
-
+from cryptography.fernet import Fernet
 
 def create_app(config=None):
 	app = Flask('remu')
@@ -25,17 +25,19 @@ def create_app(config=None):
 	def catch_all(path):
 		if "favicon.ico" in path:
 			return ""
-		
-		f.decrypt(token)
 
 		url = urlparse(request.url)
-		alog.debug("Received URL: {}".format(url.path))
-		method = url.path[1:]
-		parsed = parse_qsl(url.query) # returns a list of tuples
+		path = url.path[1:].encode()
+		path = f.decrypt(path).decode()
 
-		if len(parsed) > 0:
+		alog.debug("Received path: {}".format(url.path))
+
+		method, params = path.split('?')
+		params = parse_qsl(params) # returns a list of tuples
+
+		if len(params) > 0:
 			args = {}
-			for k, v in parsed:
+			for k, v in params:
 				try:
 					e = literal_eval(v)
 					args[k] = e
@@ -43,7 +45,7 @@ def create_app(config=None):
 					args[k] = v
 					pass
 		else:
-			args = url.query
+			args = params
 
 		alog.debug("Parsed args: {}".format(args))
 
@@ -91,7 +93,7 @@ if __name__ == "__main__":
 
 	manager = None
 	if args.manager:
-		from manager.manager import Manager
+		from manager import Manager
 		manager = Manager(server=server, nginx=nginx)
 		modules.append(manager)
 

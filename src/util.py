@@ -1,5 +1,10 @@
+import string
+import random
 import logging
 from logging.config import dictConfig
+
+def rand_str(length):
+	return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(length))
 
 def configure_logger(name, log_path):
 	logging.config.dictConfig({

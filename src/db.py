@@ -11,9 +11,18 @@ from bson import ObjectId
 '''
 
 
+def get_workshop(name, json=False):
+	"""Returns the workshop entry corresponding to the workshop name."""
+	workshop = Workshop.objects(name=name).first()
+
+	if json:
+		return workshop.to_json()
+
+	return workshop.to_mongo().to_dict()
+
 
 def get_all_workshops(name=None, json=False):
-	""" Returns all workshop entries as a list of dictionaries unless json is True. """
+	"""Returns all workshop entries as a list of dictionaries unless json is True."""
 	workshops = Workshop.objects.exclude('id')
 
 	if json:
@@ -22,18 +31,8 @@ def get_all_workshops(name=None, json=False):
 	return [w.to_mongo().to_dict() for w in workshops]
 
 
-def get_workshop_by_name(name, json=False):
-	""" Returns the workshop entry corresponding to the workshop name. """
-	workshops = Workshop.objects(name=name).exclude('id')
-
-	if json:
-		return workshops[0].to_json()
-
-	return workshops[0].to_mongo().to_dict()
-
-
 def get_server(ip, json=False):
-	""" Returns the server entry corresponding to the server ip. """
+	"""Returns the server entry corresponding to the server ip."""
 	server = Server.objects(ip=ip).first()
 
 	if json:
@@ -42,9 +41,19 @@ def get_server(ip, json=False):
 	return server.to_mongo().to_dict()
 
 
-def session_count(ip, name=None, check_available=False):
-	""" Returns the current number of sessions. If check_available is true,
-	it will return the current available sessions only. """
+def get_all_servers(json=False):
+	"""Returns all server entries as a list of dictionaries unless json is True."""
+	servers = Server.objects().exclude('id')
+
+	if json:
+		return servers.to_json()
+
+	return [s.to_mongo().to_dict() for s in servers]
+
+
+def session_count(ip, check_available=False):
+	"""Returns the current number of sessions. If check_available is true,
+	it will return the current available sessions only."""
 	server = get_server(ip)
 
 	if not check_available:
@@ -58,7 +67,7 @@ def session_count(ip, name=None, check_available=False):
 	
 
 def session_count_by_workshop(ip, name, check_available=False):
-	""" Returns the current number of sessions for the specified workshop. """
+	"""Returns the current number of sessions for the specified workshop."""
 	server = get_server(ip)
 	count = 0
 
@@ -69,9 +78,25 @@ def session_count_by_workshop(ip, name, check_available=False):
 		return count
 
 	for s_id, session in server.sessions.items():
-		if session['available'] and session.workshop.name == name:
+		if session['available'] and session.workshop['name'] == name:
 			count += 1
 	return count
+
+
+def get_available_session(ip, workshop):
+	"""Returns the first available session for the specified workshop."""
+	server = get_server(ip)
+
+	for s_id, session in server.sessions.items():
+		if session['available'] and session.workshop['name'] == name:
+			return s_id
+	return None
+
+def set_session_availability(ip, session_id, value):
+	server = get_server(ip)
+
+	server.sessions[session_id]['available'] = value
+	server.save()
 
 
 def insert_workshop(name, description, enabled, vpn_enabled, vpn_port, min_instances, max_instances):
@@ -88,23 +113,30 @@ def insert_session(server, workshop_name, ports, password, available):
 	server.save()
 	return session_id
 
+
 def remove_session(server, session_id):
-	""" Remove a session for the corresponding server document. """
+	"""Remove a session for the corresponding server document."""
 	del(server.sessions[session_id])
 	server.save()
 
+
 def update_session(server, session_id, available):
-	""" Update an existing session in a server document. """
+	"""Update an existing session in a server document."""
 	server.sessions[session_id].available = available
 	server.save()
 
+
 def insert_server(ip):
-	""" Insert a new server document. """
+	"""Insert a new server document."""
 	server = Server(ip=ip)
 	server.save()
 
+def connect_db():
+	"""Establish connection to local database."""
 
-connect('test')
+	# TODO: pull this information from config file
+	# 		this includes username, password
+	connect('remu', host='127.0.0.1', port=27017)
 
 # loc = Server(ip='127.0.0.1')
 # loc.save()

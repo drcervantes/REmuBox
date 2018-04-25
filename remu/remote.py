@@ -11,7 +11,9 @@ log = logging.getLogger(__name__)
 key = b'ajkhUoSDyYDMGgARPrqdTR5JZRMz8S3YoNYgAwGkw8Q='
 f = Fernet(key)
 
+
 def build_url(ip, port, method, **kwargs):
+	"""Construct an encrypted url for a remote request."""
 	url_base = "http://{ip}:{port}/".format(ip=ip, port=port)
 	query = "{}?".format(method)
 
@@ -24,12 +26,14 @@ def build_url(ip, port, method, **kwargs):
 	url = url_base + enc_query.decode()
 	return url
 
+
 async def _request_data(url):
 	session = aiohttp.ClientSession()
 	response = await session.get(url=url)
 	content = await response.read()
 	session.close()
 	return content.decode("utf-8")
+
 
 def request(url, worker, timeout=5):
 	"""Sends an http request asychronously so as to not block the manager web service. 
@@ -53,9 +57,12 @@ def request(url, worker, timeout=5):
 	else:
 		return result
 
+
 def _start_worker(loop):
+	"""Worker routine for asynchronous http requests."""
 	asyncio.set_event_loop(loop)
 	loop.run_forever()
+
 
 def create_worker():
 	"""Create the new loop and worker thread."""

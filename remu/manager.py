@@ -14,12 +14,11 @@ class Manager():
 
 		self.worker = remote.create_worker()
 
-		# db.connect_db()
+		connect('remu', host='127.0.0.1', port=27017)
 
 		# if server:
 		# 	self.server = server
 		# 	db.insert_server("127.0.0.1")
-		self.add_nginx_entry('SISSY', '192.168.1.3', [50000,50001])
 
 
 	def start_session(self, workshop):
@@ -64,7 +63,6 @@ class Manager():
 			if db.session_count_by_workshop(server['ip'], workshop, True) > 0:
 				# TODO: Check if enough resources are available
 				return server['ip']
-
 
 		# Check if we can spawn a new session
 		instances = 0

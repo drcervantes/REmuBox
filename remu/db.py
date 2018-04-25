@@ -131,12 +131,7 @@ def insert_server(ip):
 	server = Server(ip=ip)
 	server.save()
 
-def connect_db():
-	"""Establish connection to local database."""
 
-	# TODO: pull this information from config file
-	# 		this includes username, password
-	connect('remu', host='127.0.0.1', port=27017)
 
 # loc = Server(ip='127.0.0.1')
 # loc.save()

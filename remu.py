@@ -2,17 +2,25 @@ from gevent import monkey
 monkey.patch_all()
 from gevent.pywsgi import WSGIServer
 
-import logging
-from logging.config import dictConfig
 from flask import Flask, request
-import argparse
+
+from argparse import ArgumentParser
 from urllib.parse import urlparse, parse_qsl
 from ast import literal_eval
-import util
 
 from cryptography.fernet import Fernet
 
+from signal import signal, SIGINT
+from sys import exit
+
+from configparser import ConfigParser
+
+from remu.util import configure_logger
+
+
 def create_app(config=None):
+	"""Setup the Flask application to handle any remote service routine calls. This includes interaction
+	between the modules when run remotely and the front-end."""
 	app = Flask('remu')
 
 	app.config.update(dict(
@@ -33,7 +41,7 @@ def create_app(config=None):
 		alog.debug("Received path: {}".format(url.path))
 
 		method, params = path.split('?')
-		params = parse_qsl(params) # returns a list of tuples
+		params = parse_qsl(params)
 
 		if len(params) > 0:
 			args = {}
@@ -62,34 +70,45 @@ def create_app(config=None):
 	return app
 
 
+def signal_handler(signal, frame):
+        print('Shutting down...')
+        remu.stop()
+        exit(0)
+
+
+
 if __name__ == "__main__":
-	key = b'ajkhUoSDyYDMGgARPrqdTR5JZRMz8S3YoNYgAwGkw8Q='
+	config = ConfigParser()
+	config.read("config.ini")
+
+	key = config['remu']['secret_key'].encode()
 	f = Fernet(key)
 
-	alog = util.configure_logger('default', 'log.txt')
+	alog = configure_logger('default', 'log.txt')
 
-	parser = argparse.ArgumentParser(description="Remote Emulation Sandbox")
-	parser.add_argument("ip", help="Interface the Flask application should run on.", default="0.0.0.0")
-	parser.add_argument("port", help="Port the Flask application should run on.", default=9000)
+	parser = ArgumentParser(description="Remote Emulation Sandbox")
+	parser.add_argument("--iface", "-i", default="0.0.0.0", help="Interface the Flask application should run on.")
+	parser.add_argument("--port", "-p", type=int, default=9000, help="Port the Flask application should run on.")
 	parser.add_argument("--web", "-w", action="store_true", help="Run the web module.")
 	parser.add_argument("--nginx", "-n", action="store_true", help="Run the NGINX module.")
 	parser.add_argument("--manager", "-m", action="store_true", help="Run the Manager module.")
 	parser.add_argument("--server", "-s", action="store_true", help="Run the Server module.")
 	args = parser.parse_args()
 
+	# Use the arguments to determine which modules to run
 	modules = []
 
 	nginx = None	
 	if args.nginx:
-		from nginx import Nginx
+		from remu.nginx import Nginx
 		nginx = Nginx()
 		modules.append(nginx)
 
 	server = None
-	# if args.server:
-	# 	from server.service import Server
-	# 	server = Server()
-	# 	modules.append(server)
+	if args.server:
+		from remu.server import Server
+		server = Server()
+		modules.append(server)
 
 	manager = None
 	if args.manager:
@@ -101,13 +120,12 @@ if __name__ == "__main__":
 	# 	from web.service import Website
 	# 	modules.append(Website(manager=manager))
 
+	# Create our flask application
 	app = create_app()
 
-	# Pretty sure I don't need this because all flask calls go through a single method
-	# for m in reversed(modules):
-	# 	app.register_blueprint(m.bp)
-	# 	if isinstance(m, Website) or isinstance(m, Manager):
-	# 		break
+	# Set our listener to handle SIGINT and terminate the service
+	signal(SIGINT, signal_handler)
 
-	server = WSGIServer(('0.0.0.0', 5000), app)
-	server.serve_forever()
+	# Start the service
+	remu = WSGIServer((args.iface, args.port), app)
+	remu.serve_forever()

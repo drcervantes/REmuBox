@@ -93,6 +93,7 @@ if __name__ == "__main__":
 	parser.add_argument("--nginx", "-n", action="store_true", help="Run the NGINX module.")
 	parser.add_argument("--manager", "-m", action="store_true", help="Run the Manager module.")
 	parser.add_argument("--server", "-s", action="store_true", help="Run the Server module.")
+	parser.add_argument("--import-workshops", action="store_true", help="Import workshop appliances.")
 	args = parser.parse_args()
 
 	# Use the arguments to determine which modules to run
@@ -109,6 +110,9 @@ if __name__ == "__main__":
 		from remu.server import Server
 		server = Server()
 		modules.append(server)
+
+		if args.import_workshops:
+			server.import_templates()
 
 	manager = None
 	if args.manager:

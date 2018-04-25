@@ -12,25 +12,20 @@ from .config_parser import get_templates
 
 class WSUManager():
 	def __init__(self):
-		self.rules = {}
-		try:
-			self.rules = eval(open("rules.txt", 'r').read())
-		except Exception:
-			logging.debug("file not found")
-		print(self.rules)
 		self.vbox = virtualbox.VirtualBox()
 
 		temp_vbox = vboxapi.VirtualBoxManager()
 		self.path_to_vb = temp_vbox.getBinDir() + "VBoxManage.exe"
 		del temp_vbox
 
-		# self.path_to_vb = "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
 
 	def __enter__(self):
 		return self
 
+
 	def __exit__(self, exc_type, exc_value, traceback):
 		del self.vbox
+
 
 	def set_group(self, machine, group):
 		"""Set the group for a virtual machine.
@@ -47,14 +42,17 @@ class WSUManager():
 	    """
 		result = subprocess.check_output([self.path_to_vb, "modifyvm", machine, "--groups", group])
 
+
 	def get_random_intnet(self):
 		return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(10))
+
 
 	def get_first_snapshot(self, machine):
 		if machine.snapshot_count < 1:
 			raise Exception("No snapshot found for %s. Unable to clone!" % machine.name)
 
 		return machine.find_snapshot("")
+
 
 	def get_free_port(self):
 		"""Briefly opens and closes a socket to obtain an available port through the 
@@ -69,12 +67,14 @@ class WSUManager():
 			s.bind(('', 0))
 			return s.getsockname()[1]
 
+
 	def clone_vm(self, machine, snapshot_name=None, clone_name=None, group=None):
 		snapshot = self.get_first_snapshot(machine)
 		if snapshot_name is not None:
 			snapshot = machine.find_snapshot(snapshot_name)
 
 		return machine.clone(snapshot.id_p, name=clone_name, groups=group)
+
 
 	def clone_wsu(self, workshop_name):
 		"""Clones a workshop unit from the corresponding template. Each cloned workshop 
@@ -112,15 +112,9 @@ class WSUManager():
 		machine_count = 0
 
 		int_net = self.get_random_intnet()
-		print(self.rules)
+
 		for machine in machines:
 			clone = self.clone_vm(machine, group=[wsu_path,])
-			
-			if self.rules[machine.name] == 1:
-				self.add_vpn_rules(clone, machine.name + "_" + extension + "_" + str(machine_count))
-				self.set_group(clone.name, wsu_path)
-				machine_count += 1
-				continue
 			
 			session = clone.create_session()
 
@@ -158,6 +152,7 @@ class WSUManager():
 		nat_engine.add_redirect('', tcp, '', self.get_free_port(), '', 1194)
 		session.machine.save_settings()
 		session.unlock_machine()
+
 		
 	def get_workshop_units(self, workshop_name):
 		group_list = list(self.vbox.machine_groups)
@@ -167,8 +162,10 @@ class WSUManager():
 				units.append(group)
 		return units
 
+
 	def get_unit_count(self, workshop_name):
 		return len(self.get_workshop_units(workshop_name))
+
 
 	def find_available_unit(self, workshop_name):
 		units = self.get_workshop_units(workshop_name)
@@ -186,6 +183,7 @@ class WSUManager():
 
 		return available_wsu
 
+
 	def start_wsu(self, group_name):
 		logging.debug("Starting unit: " + group_name)
 		machines = self.vbox.get_machines_by_groups([group_name,])
@@ -197,6 +195,7 @@ class WSUManager():
 					progress.wait_for_completion()
 				except Exception:
 					logging.error("Error starting machine: " + machine.name)
+
 
 	def save_wsu(self, group_name):
 		logging.debug("Saving unit: " + group_name)
@@ -211,6 +210,7 @@ class WSUManager():
 					session.unlock_machine()
 				except Exception:
 					logging.error("Error saving machine: " + machine.name)
+
 
 	def stop_wsu(self, group_name, save=False):
 		logging.debug("Stopping unit: " + group_name)
@@ -229,6 +229,7 @@ class WSUManager():
 				except Exception:
 					logging.error("Error stopping machine: " + machine.name)
 				session.unlock_machine()
+
 
 	def restore_wsu(self, group_name):
 		logging.debug("Restoring unit: " + group_name)
@@ -254,6 +255,7 @@ class WSUManager():
 				logging.error("Error restoring machine: " + machine.name)
 			session.unlock_machine()
 
+
 	def delete_wsu(self, group_name):
 		logging.debug("Deleting unit: " + group_name)
 		machines = self.vbox.get_machines_by_groups([group_name,])
@@ -263,6 +265,7 @@ class WSUManager():
 				machine.remove()
 			except Exception:
 				logging.error("Error deleting machine: " + machine.name)
+
 
 	def progressBar(self, progress, wait=5000):
 		try:
@@ -287,7 +290,6 @@ class WSUManager():
 		progress = appliance.import_machines()
 		self.progressBar(progress)
 
-		i = 0
 		for machine_id in appliance.machines:
 			machine = self.vbox.find_machine(machine_id)
 
@@ -296,16 +298,7 @@ class WSUManager():
 			progress, snap_id = session.machine.take_snapshot('WSU_Snap', 'Snapshot for creating workshop units.', False)
 			progress.wait_for_completion()
 			session.unlock_machine()
-			
-			if config["vms"][i][2] == "true":
-				self.rules[machine.name] = 1
-				
-			else:
-				self.rules[machine.name] = 0
-				
-			i = i + 1
-		target = open('rules.txt', 'w')
-		target.write(str(self.rules))
+
 
 	def import_templates(self):
 		"""Imports all appliances from the templates directory if they are not already imported
@@ -325,6 +318,7 @@ class WSUManager():
 		for wsu in templates:
 			self.import_wsu(wsu)
 		
+
 	def get_vm_stats(self, machine):
 		stats = {}
 		session = machine.create_session()
@@ -341,6 +335,7 @@ class WSUManager():
 
 		return stats
 
+
 	def get_unit_stats(self, group_name):
 		stats = {}
 		machines = self.vbox.get_machines_by_groups([group_name,])
@@ -348,12 +343,14 @@ class WSUManager():
 			stats[machine.name] = self.get_vm_stats(machine)
 		return stats
 
+
 	def get_workshop_stats(self, workshop_name):
 		stats = {}
 		for unit in self.get_workshop_units(workshop_name):
 			unit_name = unit.split("/")[2]
 			stats[unit_name] = self.get_unit_stats(unit)
 		return stats
+
 
 	def get_vbox_stats(self):
 		stats = {}

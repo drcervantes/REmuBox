@@ -1,17 +1,20 @@
 import virtualbox
-import vboxapi
-import subprocess
 import logging
-import socket
-import string
-import random
-import sys
+from socket import socket, AF_INET, SOCK_STREAM
+from vboxapi import VirtualBoxManager
+from subprocess import check_output
+from string import ascii_uppercase, digits
+from random import SystemRandom
+from sys.stdout import flush
 from contextlib import closing
-from virtualbox import library
-from .config_parser import get_templates
+
+import xml.etree.ElementTree as et
+from os import listdir, getcwd
+from os.path import join
 
 class WSUManager():
-	def __init__(self):
+	def __init__(self, config):
+		self.config = config
 		self.vbox = virtualbox.VirtualBox()
 
 		temp_vbox = vboxapi.VirtualBoxManager()
@@ -40,11 +43,11 @@ class WSUManager():
 	    Returns:
 	        
 	    """
-		result = subprocess.check_output([self.path_to_vb, "modifyvm", machine, "--groups", group])
+		result = check_output([self.path_to_vb, "modifyvm", machine, "--groups", group])
 
 
 	def get_random_intnet(self):
-		return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(10))
+		return ''.join(SystemRandom().choice(ascii_uppercase + digits) for _ in range(10))
 
 
 	def get_first_snapshot(self, machine):
@@ -63,7 +66,7 @@ class WSUManager():
 	    Returns:
 	        A port number.
 	    """
-		with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+		with closing(socket(AF_INET, SOCK_STREAM)) as s:
 			s.bind(('', 0))
 			return s.getsockname()[1]
 
@@ -267,58 +270,6 @@ class WSUManager():
 				logging.error("Error deleting machine: " + machine.name)
 
 
-	def progressBar(self, progress, wait=5000):
-		try:
-			while not progress.completed:
-				print("%s %%\r" % (str(progress.percent)), end="")
-				sys.stdout.flush()
-				progress.wait_for_completion(wait)
-
-		except KeyboardInterrupt:
-			logging.error("Interrupted.")
-			if progress.cancelable:
-				logging.error("Canceling task...")
-				progress.cancel()
-
-
-	def import_wsu(self, config):
-		logging.debug("Importing template: " + config["name"])
-
-		appliance = self.vbox.create_appliance()
-		appliance.read(config["appliance"])
-
-		progress = appliance.import_machines()
-		self.progressBar(progress)
-
-		for machine_id in appliance.machines:
-			machine = self.vbox.find_machine(machine_id)
-
-			self.set_group(machine.name, "/" + config["name"] + "-Template")
-			session = machine.create_session()
-			progress, snap_id = session.machine.take_snapshot('WSU_Snap', 'Snapshot for creating workshop units.', False)
-			progress.wait_for_completion()
-			session.unlock_machine()
-
-
-	def import_templates(self):
-		"""Imports all appliances from the templates directory if they are not already imported
-		into VirtualBox. 
-	    """
-
-		# Grab templates already imported
-		existing_templates = []
-		group_list = list(self.vbox.machine_groups)
-		for group in group_list:
-			idx = group.find("-Template")
-			if idx > 0:
-				existing_templates.append(group[1:idx])
-
-		templates = [t for t in get_templates() if t["name"] not in existing_templates]
-
-		for wsu in templates:
-			self.import_wsu(wsu)
-		
-
 	def get_vm_stats(self, machine):
 		stats = {}
 		session = machine.create_session()
@@ -359,3 +310,84 @@ class WSUManager():
 			workshop_name = workshop.split("/")[1].split("-")[0]
 			stats[workshop_name] = self.get_workshop_stats(workshop_name)
 		return stats
+
+
+	def _parse_config(self, config_file):
+		tree = et.parse(config_file)
+		root = tree.getroot().find("workshop-settings")
+
+		# Create a dictionary of all elements in the root
+		workshop = {child.tag:child.text.strip() for child in root.getchildren() if not bool(child.getchildren())}
+
+		# Create a list of dictionaries containing the elements within the vm tag
+		vms = [{child.tag:child.text.strip() for child in vm.getchildren()} for vm in root.findall("vm")]
+		workshop["vms"] = vms
+
+		return workshop
+
+
+	def get_templates(self):
+		template_dir = self.config['remu']['template_dir']
+		workshops = []
+
+		for workshop_dir in listdir(template_dir):
+			config_path = join(template_dir, workshop_dir, "config.xml")
+			workshop = _parse_config(config_path)
+
+			# Get the full path of the appliance for importing later
+			workshop["appliance"] = join(getcwd(), template_dir, workshop_dir, workshop["appliance"])
+			workshops.append(workshop)
+			
+		return workshops
+
+
+	def _progressBar(self, progress, wait=5000):
+		try:
+			while not progress.completed:
+				print("%s %%\r" % (str(progress.percent)), end="")
+				flush()
+				progress.wait_for_completion(wait)
+
+		except KeyboardInterrupt:
+			logging.error("Interrupted.")
+			if progress.cancelable:
+				logging.error("Canceling task...")
+				progress.cancel()
+
+
+	def _import_wsu(self, template):
+		logging.debug("Importing template: " + template["name"])
+
+		appliance = self.vbox.create_appliance()
+		appliance.read(template["appliance"])
+
+		progress = appliance.import_machines()
+		progressBar(progress)
+
+		for machine_id in appliance.machines:
+			machine = vbox.find_machine(machine_id)
+
+			self.set_group(machine.name, "/" + template["name"] + "-Template")
+			session = machine.create_session()
+			progress, snap_id = session.machine.take_snapshot('WSU_Snap', 'Snapshot for creating workshop units.', False)
+			progress.wait_for_completion()
+			session.unlock_machine()
+
+
+	def import_templates(self):
+		"""Imports all appliances from the templates directory if they are not already imported
+		into VirtualBox. 
+	    """
+
+		# Grab templates already imported
+		existing_templates = []
+		group_list = list(self.vbox.machine_groups)
+		for group in group_list:
+			idx = group.find("-Template")
+			if idx > 0:
+				existing_templates.append(group[1:idx])
+
+		templates = [t for t in get_templates() if t["name"] not in existing_templates]
+
+		for wsu in templates:
+			self._import_wsu(wsu)

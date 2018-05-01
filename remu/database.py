@@ -1,14 +1,4 @@
 from models import *
-from bson import ObjectId
-
-'''
-	currently: 
-		start_unit -> machine_name, port
-	modify to:
-		start_unit -> port
-	machines can be killed by the ip and port number
-
-'''
 
 
 def get_workshop(name, json=False):
@@ -89,7 +79,7 @@ def get_available_session(ip, workshop):
 
 	for s_id, session in server.sessions.items():
 		if session['available'] and session.workshop['name'] == name:
-			return s_id
+			return s_id, session['password']
 	return None
 
 def set_session_availability(ip, session_id, value):
@@ -98,6 +88,9 @@ def set_session_availability(ip, session_id, value):
 	server.sessions[session_id]['available'] = value
 	server.save()
 
+def get_session(ip, session_id):
+	server = get_server(ip)
+	return server.session[session_id].to_mongo().to_dict()
 
 def insert_workshop(name, description, enabled, vpn_enabled, vpn_port, min_instances, max_instances):
 	workshop = Workshop(name=name, description=description, enabled=enabled, vpn_enabled=vpn_enabled, vpn_port=vpn_port, 
@@ -105,10 +98,9 @@ def insert_workshop(name, description, enabled, vpn_enabled, vpn_port, min_insta
 	workshop.save()
 
 
-def insert_session(server, workshop_name, ports, password, available):
+def insert_session(session_id, server, workshop_name, ports, password, available):
 	workshop = Workshop.objects(name=workshop_name).first()
 	session = Session(workshop=workshop, ports=ports, password=password, available=available)
-	session_id = str(ObjectId())
 	server.sessions[session_id] = session
 	server.save()
 	return session_id
@@ -126,9 +118,9 @@ def update_session(server, session_id, available):
 	server.save()
 
 
-def insert_server(ip):
+def insert_server(ip, port):
 	"""Insert a new server document."""
-	server = Server(ip=ip)
+	server = Server(ip=ip, port=port)
 	server.save()
 
 

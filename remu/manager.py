@@ -4,6 +4,7 @@ import logging
 
 import remote
 import db
+import bson
 
 log = logging.getLogger(__name__)
 
@@ -16,10 +17,13 @@ class Manager():
 
 		connect('remu', host='127.0.0.1', port=27017)
 
-		# if server:
-		# 	self.server = server
-		# 	db.insert_server("127.0.0.1")
+		if server:
+			self.server = server
+			self.db.insert_server("127.0.0.1")
 
+	def __del__(self):
+		if self.server:
+			self.db.remove_server("127.0.0.1")
 
 	def start_session(self, workshop):
 		"""Start a new session for a workshop participant.
@@ -30,20 +34,15 @@ class Manager():
 		server = self.load_balance(workshop)
 
 		# Get the session
-		session = self.obtain_session(server, workshop)
+		session_id = self.obtain_session(server, workshop)
+		self.start_session(server, session_id)
 
-		# Get the ports associated with the session
-		ports = db.get_ports(session)
+		session = self.db.get_session(session_id, server)
 
 		# Add entries to NGINX
-		add_nginx_entry(self, session, server, port)
+		self.add_nginx_entry(session_id, server, session['ports'])
 
-		# RDP file requires
-
-		return ret
-
-
-
+		return session.to_json()
 
 	def load_balance(self, workshop):
 		"""Distributes the creation of workshop units across all server nodes available.
@@ -54,22 +53,22 @@ class Manager():
 		"""
 
 		# Check if any servers have an available session
-		servers = db.get_all_servers()
+		servers = self.db.get_all_servers()
 		if not bool(servers):
 			log.error("Attempting to load balance with no servers!")
 			return None
 
 		for server in servers:
-			if db.session_count_by_workshop(server['ip'], workshop, True) > 0:
+			if self.db.session_count_by_workshop(server['ip'], workshop, True) > 0:
 				# TODO: Check if enough resources are available
 				return server['ip']
 
 		# Check if we can spawn a new session
 		instances = 0
 		for server in servers:
-			instances += db.session_count_by_workshop(server['ip'], workshop)    	
+			instances += self.db.session_count_by_workshop(server['ip'], workshop)    	
 
-		max_instances = db.get_workshop(workshop)['max_instances']
+		max_instances = self.db.get_workshop(workshop)['max_instances']
 		if instances >= max_instances:
 			log.debug("Maximum number of instances met or exceeded.")
 			return None
@@ -78,7 +77,7 @@ class Manager():
 		sessions = 9999
 		min_ip = ""
 		for server in servers:
-			count = db.session_count(server['ip'])
+			count = self.db.session_count(server['ip'])
 			if count < sessions:
 				sessions = count
 				min_ip = server['ip']
@@ -87,22 +86,34 @@ class Manager():
 
 	def obtain_session(self, server, workshop):
 		"""Obtain a session for the specified workshop."""
-		session = db.get_available_session(server, workshop)
+		session, password = self.db.get_available_session(server, workshop)
 		if session is not None:
 			self.db.set_session_availability(workshop, session, False)
-			return session
+			return session, password
 
-		if server == "127.0.0.1":
-			ports = self.server.start_unit(workshop)
-		else:
-			# We will be using a remote server
-			url = remote.build_url(server, server_port, "start_unit", workshop=workshop)
-			ports = remote.request_data(url)
-
+		session = str(bson.ObjectId())
 		password = self.rand_str(6)
-		session = db.insert_session(server, workshop, ports, password, False)
+		self.db.insert_session(session, server, workshop, [], password, False)
 
 		return session
+
+	def start_session(self, server, session_id):
+		session = self.db.get_session(session_id, server)
+		if server == "127.0.0.1":
+			# Workshop unit doesn't exist yet
+			if not session['ports']:
+				ports = self.server.clone_unit(workshop, session_id)
+				self.db.update_session_ports(session_id, server, ports)
+			self.server.start_unit(session_id)
+		else:
+			# We will be using a remote server
+			server_port = self.db.get_server_port(server)
+			if not session['ports']:
+				url = remote.build_url(server, server_port, "clone_unit", workshop=workshop, session=session_id)
+				ports = remote.request_data(url)
+				self.db.update_session_ports(session_id, server, ports)
+			url = remote.build_url(server, server_port, "start_unit", session=session_id)
+			remote.request_data(url)
 
 
 	def rand_str(self, length):

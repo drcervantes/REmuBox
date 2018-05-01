@@ -1,19 +1,18 @@
-from gevent import monkey
-monkey.patch_all()
-from gevent.pywsgi import WSGIServer
+# The primary purpose of the gevent.monkey module is to carefully patch, in place, portions of the standard library 
+# with gevent-friendly functions that behave in the same way as the original (at least as closely as possible).
+import gevent
+gevent.monkey.patch_all()
 
-from flask import Flask, request
-
-from argparse import ArgumentParser
-from urllib.parse import urlparse, parse_qsl
-from ast import literal_eval
-
-from cryptography.fernet import Fernet
-
-from signal import signal, SIGINT
-from sys import exit
-
-from configparser import ConfigParser
+import gevent.pywsgi as wsgi
+import cryptography.fernet as fernet
+import urllib.parse as ulib
+import flask
+import argparse
+import ast
+import signal
+import sys
+import gc
+import configparser
 
 from remu.util import configure_logger
 
@@ -21,7 +20,7 @@ from remu.util import configure_logger
 def create_app(config=None):
 	"""Setup the Flask application to handle any remote service routine calls. This includes interaction
 	between the modules when run remotely and the front-end."""
-	app = Flask('remu')
+	app = flask.Flask('remu')
 
 	app.config.update(dict(
 		DEBUG=True,
@@ -34,20 +33,20 @@ def create_app(config=None):
 		if "favicon.ico" in path:
 			return ""
 
-		url = urlparse(request.url)
+		url = ulib.urlparse(flask.request.url)
 		path = url.path[1:].encode()
 		path = f.decrypt(path).decode()
 
 		alog.debug("Received path: {}".format(url.path))
 
 		method, params = path.split('?')
-		params = parse_qsl(params)
+		params = ulib.parse_qsl(params)
 
 		if len(params) > 0:
 			args = {}
 			for k, v in params:
 				try:
-					e = literal_eval(v)
+					e = ast.literal_eval(v)
 					args[k] = e
 				except ValueError:
 					args[k] = v
@@ -70,23 +69,28 @@ def create_app(config=None):
 	return app
 
 
+
 def signal_handler(signal, frame):
-        print('Shutting down...')
-        remu.stop()
-        exit(0)
+    print('Shutting down...')
+
+    for m in modules:
+		del(m)
+
+	gc.collect()
+    sys.exit(0)
 
 
 
 if __name__ == "__main__":
-	config = ConfigParser()
+	config = configparser.ConfigParser()
 	config.read("config.ini")
 
 	key = config['remu']['secret_key'].encode()
-	f = Fernet(key)
+	f = fernet.Fernet(key)
 
 	alog = configure_logger('default', 'log.txt')
 
-	parser = ArgumentParser(description="Remote Emulation Sandbox")
+	parser = argparse.ArgumentParser(description="Remote Emulation Sandbox")
 	parser.add_argument("--iface", "-i", default="0.0.0.0", help="Interface the Flask application should run on.")
 	parser.add_argument("--port", "-p", type=int, default=9000, help="Port the Flask application should run on.")
 	parser.add_argument("--web", "-w", action="store_true", help="Run the web module.")
@@ -128,8 +132,8 @@ if __name__ == "__main__":
 	app = create_app()
 
 	# Set our listener to handle SIGINT and terminate the service
-	signal(SIGINT, signal_handler)
+	signal.signal(signal.SIGINT, signal_handler)
 
 	# Start the service
-	remu = WSGIServer((args.iface, args.port), app)
+	remu = wsgi.WSGIServer((args.iface, args.port), app)
 	remu.serve_forever()

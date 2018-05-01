@@ -1,65 +1,46 @@
 import json
 import logging
 
-import bin.workshop_manager
-from bin.server_monitor import *
+import workshop
+
+"""
+Things that need to be done:
+	1. Ensure the values returned when starting a unit is what we need.
+	2. Start and stop via session
+	4. Use glances to obtain server state.
+"""
 
 class Server():
 	def __init__(self):
-		self.manager = WSUManager()
+		self.manager = workshop.WorkshopManager()
 
-	def start_unit(self, workshop, state):
-		"""Attempts to start a workshop unit on the server node. If an available unit (saved state) 
-		is not found, a new unit will be cloned from the template.
+	def __del__(self):
+		del(self.manager)
 
-	    Web service routine:
-	        /start
+	def start_unit(self, workshop, session, save=False):
+		try:
+			unit = self.manager.get_unit(session)
+			self.manager.start_wsu(unit)
 
-	    Args:
-	        workshop (str): The name of the workshop.
-	        state (str): The resulting state of the unit (run, save).
+			if save:	
+				self.manager.save_wsu(unit)
+		except Exception as e:
+			return False
+		return True
 
-	    Returns:
-	        A JSON string containing the name of each machine in the unit and their respective VRDE port.
-	    """
+	def clone_unit(workshop, session):
+		"""Clones a workshop unit and returns a list of ports for all VRDE enabled machines."""
+		unit = self.manager.clone_wsu(workshop, session)
 
-		# Check for available unit
-		unit = mgr.find_available_unit(workshop_name)
-		if unit is None:
-			unit = mgr.clone_wsu(workshop_name)
-
-		mgr.start_wsu(unit)
-
-		# Build JSON for return
-		ret = {}
-		machines = mgr.vbox.get_machines_by_groups([unit,])
-		for machine in machines:
+		ports = []
+		for machine in self.manager.get_unit_machines(unit):
 			if machine.vrde_server.enabled:
 				port = machine.vrde_server.get_vrde_property('TCP/Ports')
-				extension = machine.name.find("WSU")
-				upstream_id = workshop_name + "_" + machine.name[extension:]
-				ret[upstream_id] = port
-
-		if state == "save":	
-			mgr.save_wsu(unit)
-
-		return json.dumps(ret)
-
+				ports.append(port)
+		return ports
 
 	def stop_unit(self, ports):
-		"""Attempts to stop the workshop unit and remove the virtual machines from VirtualBox 
-		depending on the boolean string 'remove'.
-
-	    Web service routine:
-	        /stop
-
-	    Args:
-	        unit (str): Name of the workshop unit to stop.
-	        remove (str): True to remove, False to restore.
-
-	    Returns:
-	        A string indicating SUCCESS or FAILURE of the request.
-	    """
+		"""Session folder needs to be deleted"""
 		unit = request.args.get("unit")
 		if unit is None:
 			logging.error("Error stopping unit: no name provided.")
@@ -74,11 +55,11 @@ class Server():
 			remove = 'True'
 
 		try:
-			mgr.stop_wsu(unit_path)
+			self.manager.stop_wsu(unit_path)
 			if remove == 'True':
-				mgr.delete_wsu(unit_path)
+				self.manager.delete_wsu(unit_path)
 			else:
-				mgr.restore_wsu(unit_path)
+				self.manager.restore_wsu(unit_path)
 		except Exception:
 			logging.error("Error stopping unit: " + unit_path)
 			return "FAILURE"
@@ -87,19 +68,10 @@ class Server():
 
 
 	def get_workshop_list(self):
-		"""Provides a list of all workshop names available on the server node.
-
-	    Web service routine:
-	        /list
-
-	    Args:
-	        
-	    Returns:
-	        A JSON string containing a list of workshop names.
-	    """
+		"""Provides a list of all workshop names available on the server node."""
 		workshops = []
 
-		for group in mgr.vbox.machine_groups:
+		for group in self.manager.vbox.machine_groups:
 			idx = group.find("-Template")
 			if idx > 0:	
 				workshops.append(group[1:idx])
@@ -127,5 +99,5 @@ class Server():
 	                                                          'vrde-enabled': 0}}}}
 	'''
 	def vbox_stats(self):
-		return json.dumps(mgr.get_vbox_stats())
+		return json.dumps(self.manager.get_vbox_stats())
 

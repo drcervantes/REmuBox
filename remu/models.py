@@ -1,5 +1,9 @@
 from mongoengine import *
 
+"""
+	TODO: Apply constraints to the models.
+"""
+
 class Workshop(Document):
 	name = StringField(unique=True)
 	description = StringField()
@@ -17,4 +21,5 @@ class Session(EmbeddedDocument):
 
 class Server(Document):
 	ip = StringField(unique=True)
+	port = IntField()
 	sessions = MapField(EmbeddedDocumentField(Session))

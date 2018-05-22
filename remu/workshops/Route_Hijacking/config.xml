@@ -1,0 +1,32 @@
+<xml>
+    <workshop-settings>
+        <!-- Required: The name of the workshop -->
+        <name>
+            Route_Hijacking
+        </name>
+        <!-- Required: The name of the appliance to be imported -->
+        <appliance>
+            2017_08_10RouteHijacking.ova
+        </appliance>
+
+        <vm>
+            <!-- Required: The name of the vm that will be cloned -->
+            <name>
+                kali-2016.2-debian_ecel
+            </name>
+
+            <!-- Required: Indicates whether clones of this vm should have vrdp enabled; if true, then vrdp-baseport will be used to determine the port to use -->
+            <vrdp-enabled>
+                true
+            </vrdp-enabled>
+        </vm>
+        <vm>
+            <name>
+                ubuntu-core4.7
+            </name>
+            <vrdp-enabled>
+                false
+            </vrdp-enabled>
+        </vm>
+    </workshop-settings>
+</xml>

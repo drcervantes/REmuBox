@@ -48,11 +48,6 @@ class WorkshopManager():
 	def get_free_port(self):
 		"""Briefly opens and closes a socket to obtain an available port through the 
 		operating system. 
-
-		Args:
-
-		Returns:
-			A port number.
 		"""
 		with contextlib.closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
 			s.bind(('', 0))
@@ -68,14 +63,6 @@ class WorkshopManager():
 	def clone_wsu(self, workshop, session_id):
 		"""Clones a workshop unit from the corresponding template. Each cloned workshop 
 		unit will be placed into a group with the following naming scheme <workshop>-Units.
-		Each machine in the unit will be assigned a name unique to the server node:
-		<machine name>_WSU_<group number>_<machine number>
-
-		Args:
-			workshop_name (str): The name of the workshop.
-
-		Returns:
-			A string containing the group path for the cloned workshop unit.
 		"""
 		group_list = list(self.vbox.machine_groups)
 		template = "/" + workshop + "-Template"
@@ -84,40 +71,45 @@ class WorkshopManager():
 		if template not in group_list:
 			raise Exception("Template for %s was not found!" % workshop)
 
-		wsu_path = "/" + workshop + '-Units/' + session_id
-
-		machines = self.vbox.get_machines_by_groups([template,])
-		machine_count = 0
-
+		clones = []
 		int_net = self.get_random_intnet()
+		unit_path = "/" + workshop + '-Units/' + session_id
 
-		for machine in machines:
-			clone = self.clone_vm(machine, group=[wsu_path,])
+		for machine in self.get_unit_machines(template):
+			clone = self.clone_vm(machine, group=[unit_path,])
 			
-			session = clone.create_session()
+			try:
+				session = clone.create_session(vboxlib.LockType(2))
 
-			machine_name = machine.name + "_" + session_id
-			session.machine.name = machine_name
-			logging.debug("Cloned machine: %s", machine_name)
-			
-			adapter = session.machine.get_network_adapter(0)
+				machine_name = machine.name + "_" + session_id
+				session.machine.name = machine_name
+				logging.debug("Cloned machine: %s", machine_name)
+				
+				adapter = session.machine.get_network_adapter(0)
 
-			adapter.attachment_type = vboxlib.NetworkAttachmentType(3)
-			adapter.internal_network = int_net
-			logging.debug("Cloned machine intnet: %s", int_net)		
+				adapter.attachment_type = vboxlib.NetworkAttachmentType(3)
+				adapter.internal_network = int_net
+				logging.debug("Cloned machine intnet: %s", int_net)		
 
-			port = str(self.get_free_port())
-			session.machine.vrde_server.set_vrde_property('TCP/Ports', port)
-			logging.debug("Cloned machine port: %s", port)
+				port = str(self.get_free_port())
+				session.machine.vrde_server.set_vrde_property('TCP/Ports', port)
+				logging.debug("Cloned machine port: %s", port)
 
-			# session.machine.save_settings()
-			progress, sid = session.machine.take_snapshot("Original", "Original state of the machine.", True)
-			progress.wait_for_completion()
-			session.unlock_machine()
+				# session.machine.save_settings()
+				progress, sid = session.machine.take_snapshot("Original", "Original state of the machine.", True)
+				progress.wait_for_completion()
+				session.unlock_machine()
 
-			self.set_group(clone.name, wsu_path)
-			machine_count += 1
-		return wsu_path
+				self.set_group(clone.name, unit_path)
+				clones.append(machine)
+			except Exception as e:
+				msg = "Error cloning: {}".format(machine.name)
+				logging.error(msg)
+				for c in clones:
+					c.remove()
+				raise Exception(msg)
+
+		return unit_path
 
 	
 	def get_workshop_units(self, workshop_name):
@@ -139,27 +131,9 @@ class WorkshopManager():
 		"""Get all machines in a specific unit."""
 		return self.vbox.get_machines_by_groups([unit,])
 
-	# def find_available_unit(self, workshop_name):
-	# 	units = self.get_workshop_units(workshop_name)
-
-	# 	available_wsu = None
-	# 	for wsu in units:
-	# 		machines = self.vbox.get_machines_by_groups([wsu,])
-	# 		all_off = True
-	# 		for machine in machines:
-	# 			if machine.state >= library.MachineState.aborted:
-	# 				all_off = False
-	# 		if all_off:
-	# 			available_wsu = wsu
-	# 			break
-
-	# 	return available_wsu
-
-
 	def start_unit(self, unit):
 		logging.debug("Starting unit: %s", unit)
-		machines = self.vbox.get_machines_by_groups([unit,])
-		for machine in machines:
+		for machine in self.get_unit_machines(unit):
 			if machine.state < vboxlib.MachineState.running:
 				logging.debug("Starting machine: " + machine.name)
 				try:
@@ -168,11 +142,9 @@ class WorkshopManager():
 				except Exception:
 					logging.error("Error starting machine: %s", machine.name)
 
-
 	def save_unit(self, unit):
 		logging.debug("Saving unit: " + unit)
-		machines = self.vbox.get_machines_by_groups([unit,])
-		for machine in machines:
+		for machine in self.get_unit_machines(unit):
 			if machine.state >= vboxlib.MachineState.running:
 				logging.debug("Saving machine: " + machine.name)
 				try:
@@ -183,50 +155,31 @@ class WorkshopManager():
 				except Exception:
 					logging.error("Error saving machine: %s", machine.name)
 
-
-	def stop_unit(self, unit, save=False):
+	def stop_unit(self, unit):
 		logging.debug("Stopping unit: %s", unit)
-		machines = self.vbox.get_machines_by_groups([unit,])
-		for machine in machines:
+		for machine in self.get_unit_machines(unit):
 			if machine.state >= vboxlib.MachineState.running:
 				logging.debug("Stopping: " + machine.name)
-				session = machine.create_session()
 				try:
-					if save:
-						progress = session.machine.save_state()
-						progress.wait_for_completion()
-					else:
-						progress = session.console.power_down()
-						progress.wait_for_completion()
+					session = machine.create_session()
+					progress = session.console.power_down()
+					progress.wait_for_completion()
+					session.unlock_machine()
 				except Exception:
-					logging.error("Error stopping machine: %s", machine.name)
-				session.unlock_machine()
-
+					logging.error("Error stopping machine: %s", machine.name)	
 
 	def restore_unit(self, unit):
 		logging.debug("Restoring unit: %s", unit)
-		template = "/" + unit.split('/')[1].split('-')[0] + "-Template"
-
-		snapshots = {}
-		machines = self.vbox.get_machines_by_groups([template,])
-		for machine in machines:
-			snapshots[machine.name] = self.get_first_snapshot(machine)
-
-		machines = self.vbox.get_machines_by_groups([unit,])
-		for machine in machines:
+		for machine in self.get_unit_machines(unit):
 			logging.debug("Restoring machine: %s", machine.name)
-			session = machine.create_session()
 			try:
-				ext_index = machine.name.find("_WSU")
-				machine_name = machine.name[0:ext_index]
+				snapshot = self.get_first_snapshot(machine)
+				session = machine.create_session()
 				progress = session.machine.restore_snapshot(snapshots[machine_name])
 				progress.wait_for_completion()
-				port = str(get_free_port())
-				session.machine.vrde_server.set_vrde_property('TCP/Ports', port)
 			except Exception:
 				logging.error("Error restoring machine: %s", machine.name)
 			session.unlock_machine()
-
 
 	def delete_unit(self, unit):
 		logging.debug("Deleting unit: %s", unit)

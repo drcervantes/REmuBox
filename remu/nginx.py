@@ -1,68 +1,70 @@
-from os.path import exists, join
+""" TODO """
+import pathlib
 import subprocess
-import util
+import remu.util
 
 class Nginx():
-	def __init__(self):
-		self.path_to_nginx = 'C:\\Users\\Aegis\\Desktop'
+    """ TODO """
+    def __init__(self, config):
+        self.path = pathlib.Path(config['NGINX']['path'])
 
-		self.rdp_maps = join(self.path_to_nginx, 'rdp_maps.conf')
-		if not exists(self.rdp_maps):
-			with open(self.rdp_maps, "w"): pass
-			
-		self.rdp_upstreams = join(self.path_to_nginx, 'rdp_upstreams.conf')
-		if not exists(self.rdp_upstreams):
-			with open(self.rdp_upstreams, "w"): pass
+        self.rdp_maps = self.path.parent / 'rdp_maps.conf'
+        if not self.rdp_maps.exists():
+            with open(self.rdp_maps, "w"):
+                pass
 
-	def reload(self):
-		"""Inform nginx to reload the configuration."""
-		result = subprocess.check_output(["nginx", "-s", "reload"])
- 
-	def add_mapping(self, session, server, ports):
-		with open(self.rdp_maps, "r+") as map_conf, open(self.rdp_upstreams, "r+") as upstream_conf:
-			mappings = list(map_conf)
-			upstreams = list(upstream_conf)
+        self.rdp_upstreams = self.path.parent / 'rdp_upstreams.conf'
+        if not self.rdp_upstreams.exists():
+            with open(self.rdp_upstreams, "w"):
+                pass
 
-			for port in ports:
-				session_id = session + "_" + str(port)
-				upstream = util.rand_str(10)
-				address = server + ":" + str(port)
+    def reload(self):
+        """Inform nginx to reload the configuration."""
+        result = subprocess.check_output([str(self.path), "-s", "reload"])
+        return result
 
-				new_map = session_id + " " + upstream + ";\n"
-				mappings.append(new_map)
-				self.write_conf(map_conf, mappings)
+    def add_mapping(self, session, server, ports):
+        """ TODO """
+        with self.rdp_maps.open("r+") as map_conf, self.rdp_upstreams.open("r+") as upstream_conf:
+            mappings = list(map_conf)
+            upstreams = list(upstream_conf)
 
-				new_upstream = "upstream " + upstream + " {server " + address + ";}\n"
-				upstreams.append(new_upstream)
-				self.write_conf(upstream_conf, upstreams)  
+            for port in ports:
+                session_id = session + "_" + str(port)
+                upstream = remu.util.rand_str(10)
+                address = server + ":" + str(port)
 
-			return True
-		return False
+                new_map = session_id + " " + upstream + ";\n"
+                mappings.append(new_map)
+                self.write_conf(map_conf, mappings)
 
-	def remove_mapping(self, session):
-		with open(self.rdp_maps, "r+") as map_conf, open(self.rdp_upstreams, "r+") as upstream_conf:
-			mappings = list(map_conf)
-			upstreams = list(upstream_conf)
+                new_upstream = "upstream " + upstream + " {server " + address + ";}\n"
+                upstreams.append(new_upstream)
+                self.write_conf(upstream_conf, upstreams)
 
-			u = [e.split()[1] for e in mappings if session in e]
-			mappings = [e for e in mappings if session not in e]
-			upstreams = [e for e in upstreams if e in u]
+            return True
+        return False
 
-			self.write_conf(map_conf, mappings)
-			self.write_conf(upstream_conf, mappings)
+    def remove_mapping(self, session):
+        """ TODO """
+        with self.rdp_maps.open("r+") as map_conf, self.rdp_upstreams.open("r+") as upstream_conf:
+            mappings = list(map_conf)
+            upstreams = list(upstream_conf)
 
-			return True
-		return False
+            ups = [e.split()[1] for e in mappings if session in e]
+            mappings = [e for e in mappings if session not in e]
+            upstreams = [e for e in upstreams if e in ups]
 
-	def write_conf(self, conf, mappings):
-		conf.seek(0)
-		for line in mappings:
-			conf.write(line)
-		conf.truncate()
+            self.write_conf(map_conf, mappings)
+            self.write_conf(upstream_conf, mappings)
 
-# n = Nginx()
-# n.add_mapping('87ry2','127.0.0.1',[5000,5001])
-# n.add_mapping('1d83a','127.0.0.1',[5002,5003])
-# n.remove_mapping('87ry2')
-# http://127.0.0.1:5000/add_mapping?session=%27%2287ry2%22%27&server=%27%22127.0.0.1%22%27&ports=%27[5000,5001]%27
-# http://127.0.0.1:5000/add_mapping?session=%22ABCDE%22&server=%22127.0.0.1%22&ports=[5000%2C5001]
+            return True
+        return False
+
+    @classmethod
+    def write_conf(cls, conf, mappings):
+        """ TODO """
+        conf.seek(0)
+        for line in mappings:
+            conf.write(line)
+        conf.truncate()

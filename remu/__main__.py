@@ -8,6 +8,7 @@ monkey.patch_all()
 
 import gevent
 import logging
+import logging.config
 import gevent.pywsgi as wsgi
 import cryptography.fernet as fernet
 import urllib.parse as ulib
@@ -19,6 +20,7 @@ import sys
 import gc
 import configparser
 import flask_login
+import remu.database as db
 
 def create_app(config, modules):
     """
@@ -33,7 +35,8 @@ def create_app(config, modules):
     ))
 
     login_manager = flask_login.LoginManager(app)
-    login_manager.login_view = 'login'
+    login_manager.login_view = 'gui.login'
+    login_manager.user_loader(db.get_user)
 
     @app.route('/')
     def catch_root():
@@ -189,9 +192,9 @@ def main():
         manager = Manager(config=config, server=server, nginx=nginx)
         modules.append(manager)
 
-    # if args.web:
-    #   from web.service import Website
-    #   modules.append(Website(manager=manager))
+    if args.manager or args.web:
+        import mongoengine
+        mongoengine.connect(host=config['DATABASE']['ip'], port=int(config['DATABASE']['port']))
 
     def signal_handler(sig, frame):
         """ TODO """
@@ -206,11 +209,15 @@ def main():
     # Create our flask application
     app = create_app(config, modules)
 
+    if args.web:
+        from remu.interface import bp
+        app.register_blueprint(bp, url_prefix='/admin')
+
     # Set our listener to handle SIGINT and terminate the service
     signal.signal(signal.SIGINT, signal_handler)
 
     # Start the service
-    service = wsgi.WSGIServer((config['REMU']['interface'], config['REMU']['port']), app)
+    service = wsgi.WSGIServer((config['REMU']['interface'], int(config['REMU']['port'])), app)
     service.serve_forever()
 
 

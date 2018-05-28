@@ -12,26 +12,23 @@ def home():
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
-    app = current_app._get_current_object()
-    app.login_manager.user_loader(db.get_user)
-
     if current_user.is_authenticated:
-        return redirect(url_for('home'))
+        return redirect(url_for('gui.home'))
     form = forms.LoginForm()
     if form.validate_on_submit():
         user = db.get_user(form.username.data)
         if user is None or not user.check_password(form.password.data):
             print('Invalid username or password')
-            return redirect(url_for('login'))
+            return redirect(url_for('gui.login'))
         login_user(user, remember=True)
-        return redirect(url_for('home'))
+        return redirect(url_for('gui.home'))
     return render_template('login.html', form=form)
 
 @bp.route('/logout')
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('gui.login'))
 
 @bp.route('/servers', methods=['GET', 'POST'])
 @login_required

@@ -101,3 +101,33 @@ class Server():
 	def vbox_stats(self):
 		return json.dumps(self.manager.get_vbox_stats())
 
+
+# from glances.stats import GlancesStats
+# stats = GlancesStats
+# stats.getCpu()
+
+# from glances.main import GlancesMain
+# main = GlancesMain()
+# main.args.disable_alert = True
+# main.args.disable_amps = True
+# main.args.disable_batpercent = True
+# main.args.disable_cloud = True
+# main.args.disable_core = True
+# main.args.disable_diskio = True
+# main.args.disable_docker = True
+# main.args.disable_folders = True
+# main.args.disable_fs = True
+# main.args.disable_help = True
+# main.args.disable_irq = True
+# main.args.disable_load = True
+# main.args.disable_processcount = True
+# main.args.disable_processlist = True
+# main.args.disable_psutilversion = True
+# main.args.disable_raid = True
+# main.args.disable_sensors = True
+# main.args.disable_system = True
+# main.args.disable_wifi = True
+
+# stats = GlancesStats(main.config,main.args)
+# stats.update()
+# stats.getAllAsDict()

@@ -1,6 +1,6 @@
 """ TODO """
 import mongoengine
-from remu.models import Server, Workshop, Session
+from remu.models import Server, Workshop, Session, User
 
 def get_workshop(name, json=False):
     """Returns the workshop entry corresponding to the workshop name."""
@@ -146,7 +146,3 @@ def remove_server(host):
     except Exception as exc:
         # log.exception(str(e))
         return False
-
-def connect_db(host, port):
-    """ TODO """
-    mongoengine.connect('remu', host=host, port=port)

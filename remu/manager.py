@@ -17,8 +17,6 @@ class Manager():
 
         self.remote = Remote(config)
 
-        db.connect_db(config['DATABASE']['ip'], config['DATABASE']['port'])
-
         if server:
             self.server = server
             db.insert_server("127.0.0.1", 9000)

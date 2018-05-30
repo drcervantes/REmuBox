@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
+    <title>Blank</title>
+    <style>#loader{transition:all .3s ease-in-out;opacity:1;visibility:visible;position:fixed;height:100vh;width:100%;background:#fff;z-index:90000}#loader.fadeOut{opacity:0;visibility:hidden}.spinner{width:40px;height:40px;position:absolute;top:calc(50% - 20px);left:calc(50% - 20px);background-color:#333;border-radius:100%;-webkit-animation:sk-scaleout 1s infinite ease-in-out;animation:sk-scaleout 1s infinite ease-in-out}@-webkit-keyframes sk-scaleout{0%{-webkit-transform:scale(0)}100%{-webkit-transform:scale(1);opacity:0}}@keyframes sk-scaleout{0%{-webkit-transform:scale(0);transform:scale(0)}100%{-webkit-transform:scale(1);transform:scale(1);opacity:0}}</style>
+  <link href="static\style.css" rel="stylesheet"></head>
+  <body class="app">
+    
+    
+    
+
+    
+    
+    <div id="loader">
+      <div class="spinner"></div>
+    </div>
+
+    <script>
+      window.addEventListener('load', () => {
+        const loader = document.getElementById('loader');
+        setTimeout(() => {
+          loader.classList.add('fadeOut');
+        }, 300);
+      });
+    </script>
+
+    
+    
+    <div>
+      
+      <div class="sidebar">
+        <div class="sidebar-inner">
+          
+          <div class="sidebar-logo">
+            <div class="peers ai-c fxw-nw">
+              <div class="peer peer-greed">
+                <a class="sidebar-link td-n" href="index.html">
+                  <div class="peers ai-c fxw-nw">
+                    <div class="peer">
+                      <div class="logo">
+                        <img src="assets/static/images/logo.png" alt="">
+                      </div>
+                    </div>
+                    <div class="peer peer-greed">
+                      <h5 class="lh-1 mB-0 logo-text">REmuBox</h5>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="peer">
+                <div class="mobile-toggle sidebar-toggle">
+                  <a href="" class="td-n">
+                    <i class="ti-arrow-circle-left"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          
+          <ul class="sidebar-menu scrollable pos-r">
+            <li class="nav-item mT-30 active">
+              <a class="sidebar-link" href="index.html">
+                <span class="icon-holder">
+                  <i class="c-blue-500 ti-home"></i>
+                </span>
+                <span class="title">Dashboard</span>
+              </a>
+            </li>
+
+            <li class="nav-item dropdown">
+              <a class="dropdown-toggle" href="javascript:void(0);">
+                <span class="icon-holder">
+                    <i class="c-red-500 ti-files"></i>
+                  </span>
+                <span class="title">Pages</span>
+                <span class="arrow">
+                    <i class="ti-angle-right"></i>
+                  </span>
+              </a>
+              <ul class="dropdown-menu">                                
+                <li>
+                  <a class="sidebar-link" href="blank.html">Blank</a>
+                </li>
+                <li>
+                  <a class="sidebar-link" href="404.html">404</a>
+                </li>
+                <li>
+                  <a class="sidebar-link" href="500.html">500</a>
+                </li>
+                <li>
+                  <a class="sidebar-link" href="signin.html">Sign In</a>
+                </li>
+                <li>
+                  <a class="sidebar-link" href="signup.html">Sign Up</a>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      
+      <div class="page-container">
+        
+        <div class="header navbar">
+          <div class="header-container">
+            <ul class="nav-right">
+              <li>
+                <a href="" class="d-b td-n bgcH-grey-100 c-grey-700">
+                  <i class="ti-power-off mR-10"></i>
+                  <span>Logout</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        
+        <main class="main-content bgc-grey-100">
+          <div id="mainContent">
+            <div class="full-container">
+
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="bgc-white bd bdrs-3 p-20 mB-20">
+                    <table class="table">
+                      <tr>
+                        <td class="nb w-30">
+                          <small class="fw-600 c-grey-700">SERVER</small>
+                          <h4 class="c-grey-900 mB-0">192.168.1.2</h4>
+                        </td>
+                        <td class="nb w-30">
+                          <small class="fw-600 c-grey-700">PORT</small>
+                          <h4 class="c-grey-900 mB-0">9000</h4>
+                        </td>
+                        <td class="nb w-30">&nbsp;</td>
+                      </tr>
+                    </table>                        
+                    
+                    <div class="peers bdT p-20 fxw-nw@lg+ jc-sb ta-c gap-10">
+                      <div class="peer">
+                        <div class="easy-pie-chart" data-size="80" data-percent="75" data-bar-color="#2196f3">
+                          <span></span>
+                        </div>
+                        <h6 class="fsz-sm">Overall CPU</h6>
+                      </div>
+                      <div class="peer">
+                        <div class="easy-pie-chart" data-size="80" data-percent="50" data-bar-color="#2196f3">
+                          <span></span>
+                        </div>
+                        <h6 class="fsz-sm">Virtual Memory</h6>
+                      </div>
+                      <div class="peer">
+                        <div class="easy-pie-chart" data-size="80" data-percent="90" data-bar-color="#2196f3">
+                          <span></span>
+                        </div>
+                        <h6 class="fsz-sm">Physical Memory</h6>
+                      </div>
+                      <div class="peer">
+                        <table class="table">
+                        <tr>
+                          <th class="nb">Uptime</th>
+                          <td class="nb">126 hours</td>
+                        </tr>
+                        <tr>
+                          <th>Sessions Instantiated</th>
+                          <td>100</td>
+                        </tr>
+                        <tr>
+                          <th>Something Else</th>
+                          <td>100</td>
+                        </tr>                       
+                        </table>
+                      </div>
+                    </div>
+
+                    <h4 class="c-grey-900 mB-10" data-toggle="collapse" data-target="#demo">Sessions</h4>
+                    <table id="demo" class="table collapse show">
+                      <thead>
+                        <tr>
+                          <th scope="col">#</th>
+                          <th scope="col">Workshop</th>
+                          <th scope="col">Active Time</th>
+                          <th scope="col">Machines</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <th scope="row">F12GW6</th>
+                          <td>Route Hijacking</td>
+                          <td>30 minutes</td>
+                          <td>
+                            <table class="table">
+                              <tbody>
+                              <tr>
+                                <td class="nb">Kali</td>
+                                <td class="nb">3001</td>
+                                <td class="nb"><span class="badge bgc-green-50 c-green-700 p-10 lh-0 tt-c badge-pill">Running</span></td>
+                              </tr>
+                              <tr>
+                                <td>CORE</td>
+                                <td>-</td>
+                                <td><span class="badge bgc-green-50 c-green-700 p-10 lh-0 tt-c badge-pill">Running</span></td>
+                              </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                        <tr>
+                          <th scope="row">2UI6GS</th>
+                          <td>Route Hijacking</td>
+                          <td>45 minutes</td>
+                          <td>
+                            <table class="table">
+                              <tbody>
+                              <tr>
+                                <td class="nb">Kali</td>
+                                <td class="nb">3002</td>
+                                <td class="nb"><span class="badge bgc-green-50 c-green-700 p-10 lh-0 tt-c badge-pill">Running</span></td>
+                              </tr>
+                              <tr>
+                                <td>CORE</td><td>-</td><td><span class="badge bgc-green-50 c-green-700 p-10 lh-0 tt-c badge-pill">Running</span></td>
+                              </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                        <tr>
+                          <th scope="row">3C53N1</th>
+                          <td>Wannacry</td>
+                          <td>60 minutes</td>
+                          <td>
+                            <table class="table">
+                              <tbody>
+                              <tr>
+                                <td class="nb">Windows 7</td>
+                                <td class="nb">3003</td>
+                                <td class="nb"><span class="badge bgc-deep-purple-50 c-deep-purple-700 p-10 lh-0 tt-c badge-pill">Ready</span></td>
+                              </tr>
+                              <tr>
+                                <td>Windows 7</td><td>3004</td><td><span class="badge bgc-deep-purple-50 c-deep-purple-700 p-10 lh-0 tt-c badge-pill">Ready</span></td>
+                              </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+          </div>
+        </main>
+
+        
+        <footer class="bdT ta-c p-30 lh-0 fsz-sm c-grey-600">
+          <span>Copyright © 2017 Designed by <a href="https://colorlib.com" target="_blank" title="Colorlib">Colorlib</a>. All rights reserved.</span>
+        </footer>
+      </div>
+    </div>
+  <script type="text/javascript" src="static\vendor.js"></script><script type="text/javascript" src="static\bundle.js"></script></body>
+</html>

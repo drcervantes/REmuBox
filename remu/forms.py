@@ -5,9 +5,10 @@ from wtforms.validators import DataRequired
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
+    remember_me = BooleanField('Remember Me')
     submit = SubmitField('Log In')
 
 class AddServerForm(FlaskForm):
-    host = StringField('Host', validators=[DataRequired()])
+    address = StringField('Address', validators=[DataRequired()])
     port = StringField('Port', validators=[DataRequired()])
     submit = SubmitField('Add Server')

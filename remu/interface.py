@@ -48,4 +48,7 @@ def servers():
 def add_server():
     form = forms.AddServerForm()
     if form.validate_on_submit():
+        db.insert_server(form.address.data, form.port.data)
+        msg = "Server was added"
+        return render_template('add_server.html', form=form, msg=msg)    
     return render_template('add_server.html', form=form)

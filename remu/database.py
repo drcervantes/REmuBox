@@ -1,22 +1,14 @@
 """ TODO """
 from remu.models import Server, Workshop, Session, User
 
-def get_workshop(name, json=False):
+def get_workshop(name):
     """Returns the workshop entry corresponding to the workshop name."""
     workshop = Workshop.objects(name=name).first()
-
-    if json:
-        return workshop.to_json()
-
     return workshop.to_mongo().to_dict()
 
-def get_all_workshops(json=False):
+def get_all_workshops():
     """Returns all workshop entries as a list of dictionaries unless json is True."""
     workshops = Workshop.objects().exclude('id')
-
-    if json:
-        return workshops.to_json()
-
     return [w.to_mongo().to_dict() for w in workshops]
 
 def get_user(username):
@@ -25,19 +17,11 @@ def get_user(username):
 def get_server(host, json=False):
     """Returns the server entry corresponding to the server host."""
     server = Server.objects(ip=host).first()
-
-    if json:
-        return server.to_json()
-
     return server.to_mongo().to_dict()
 
 def get_all_servers(json=False):
     """Returns all server entries as a list of dictionaries unless json is True."""
     servers = Server.objects().exclude('id')
-
-    if json:
-        return servers.to_json()
-
     return [s.to_mongo().to_dict() for s in servers]
 
 def get_session(host, session_id):

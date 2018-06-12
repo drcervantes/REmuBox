@@ -1,5 +1,4 @@
 """ TODO """
-import mongoengine
 from remu.models import Server, Workshop, Session, User
 
 def get_workshop(name, json=False):
@@ -109,16 +108,15 @@ def insert_server(host, port):
         # log.exception(str(e))
         return False
 
-def insert_workshop(name, desc, enabled, vpn_enabled, vpn_port, min_units, max_units):
+def insert_workshop(name, desc, min_units, max_units, walkthrough, enabled):
     """ TODO """
     workshop = Workshop(
         name=name,
         description=desc,
-        enabled=enabled,
-        vpn_enabled=vpn_enabled,
-        vpn_port=vpn_port,
         min_instances=min_units,
-        max_instances=max_units
+        max_instances=max_units,
+        walkthrough=walkthrough,
+        enabled=enabled
     )
     workshop.save()
 

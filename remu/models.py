@@ -12,14 +12,19 @@ class Workshop(Document):
     name = StringField(unique=True)
     description = StringField()
     enabled = BooleanField()
-    vpn_enabled = BooleanField()
-    vpn_port = IntField()
     min_instances = IntField()
     max_instances = IntField()
+    walkthrough = StringField()
+
+class Machine(EmbeddedDocument):
+    name = StringField()
+    port = IntField()
+    active = BooleanField()
+    start_time = IntField()
 
 class Session(EmbeddedDocument):
     workshop = ReferenceField(Workshop)
-    ports = ListField(IntField())
+    machines = ListField(EmbeddedDocumentField(Machine))
     password = StringField()
     available = BooleanField()
 

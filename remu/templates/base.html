@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
     <title>Blank</title>
-    <style>#loader{transition:all .3s ease-in-out;opacity:1;visibility:visible;position:fixed;height:100vh;width:100%;background:#fff;z-index:90000}#loader.fadeOut{opacity:0;visibility:hidden}.spinner{width:40px;height:40px;position:absolute;top:calc(50% - 20px);left:calc(50% - 20px);background-color:#333;border-radius:100%;-webkit-animation:sk-scaleout 1s infinite ease-in-out;animation:sk-scaleout 1s infinite ease-in-out}@-webkit-keyframes sk-scaleout{0%{-webkit-transform:scale(0)}100%{-webkit-transform:scale(1);opacity:0}}@keyframes sk-scaleout{0%{-webkit-transform:scale(0);transform:scale(0)}100%{-webkit-transform:scale(1);transform:scale(1);opacity:0}}</style>
+    <style>#loader{transition:all .3s ease-in-out;opacity:1;visibility:visible;position:fixed;height:100vh;width:100%;background:#fff;z-index:90000}#loader.fadeOut{opacity:0;visibility:hidden}.spinner{width:40px;height:40px;position:absolute;top:calc(50% - 20px);left:calc(50% - 20px);background-color:#333;border-radius:100%;-webkit-animation:sk-scaleout 1s infinite ease-in-out;animation:sk-scaleout 1s infinite ease-in-out}@-webkit-keyframes sk-scaleout{0%{-webkit-transform:scale(0)}100%{-webkit-transform:scale(1);opacity:0}}@keyframes sk-scaleout{0%{-webkit-transform:scale(0);transform:scale(0)}100%{-webkit-transform:scale(1);transform:scale(1);opacity:0}}.nb{border:none!important}.w-30{width:30%}.peer table{flex:initial}.adj-slider{margin-top:calc(.375rem + 1px)}</style>
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
   </head>
   <body class="app">
@@ -18,7 +18,13 @@
           loader.classList.add('fadeOut');
         }, 300);
       });
+      function updateInput(field) { 
+        let fileName = field.value.split('\\').pop(); 
+        field.nextElementSibling.className += " selected"; 
+        field.nextElementSibling.innerText = fileName;
+      }
     </script>
+
     <div>
       <div class="sidebar">
         <div class="sidebar-inner">
@@ -49,7 +55,7 @@
           </div>
           <ul class="sidebar-menu scrollable pos-r">
             <li class="nav-item mT-30 active">
-              <a class="sidebar-link" href="index.html">
+              <a class="sidebar-link" href="{{ url_for('gui.home') }}">
                 <span class="icon-holder">
                   <i class="c-blue-500 ti-home"></i>
                 </span>
@@ -61,26 +67,36 @@
                 <span class="icon-holder">
                     <i class="c-red-500 ti-files"></i>
                   </span>
-                <span class="title">Pages</span>
+                <span class="title">Servers</span>
                 <span class="arrow">
                     <i class="ti-angle-right"></i>
                   </span>
               </a>
               <ul class="dropdown-menu">                                
                 <li>
-                  <a class="sidebar-link" href="blank.html">Blank</a>
+                  <a class="sidebar-link" href="{{ url_for('gui.add_server') }}">Add Server</a>
                 </li>
                 <li>
-                  <a class="sidebar-link" href="404.html">404</a>
+                  <a class="sidebar-link" href="{{ url_for('gui.servers') }}">Status</a>
+                </li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="dropdown-toggle" href="javascript:void(0);">
+                <span class="icon-holder">
+                    <i class="c-red-500 ti-files"></i>
+                  </span>
+                <span class="title">Workshops</span>
+                <span class="arrow">
+                    <i class="ti-angle-right"></i>
+                  </span>
+              </a>
+              <ul class="dropdown-menu">                                
+                <li>
+                  <a class="sidebar-link" href="{{ url_for('gui.add_workshop') }}">Add Workshop</a>
                 </li>
                 <li>
-                  <a class="sidebar-link" href="500.html">500</a>
-                </li>
-                <li>
-                  <a class="sidebar-link" href="signin.html">Sign In</a>
-                </li>
-                <li>
-                  <a class="sidebar-link" href="signup.html">Sign Up</a>
+                  <a class="sidebar-link" href="{{ url_for('gui.add_workshop') }}">Manage</a>
                 </li>
               </ul>
             </li>
@@ -92,7 +108,7 @@
           <div class="header-container">
             <ul class="nav-right">
               <li>
-                <a href="" class="d-b td-n bgcH-grey-100 c-grey-700">
+                <a href="{{ url_for('gui.logout') }}" class="d-b td-n bgcH-grey-100 c-grey-700">
                   <i class="ti-power-off mR-10"></i>
                   <span>Logout</span>
                 </a>
@@ -101,8 +117,8 @@
           </div>
         </div>
 
-{% block body %}{% endblock %}
-
+        {% block body %}{% endblock %}
+        
         <footer class="bdT ta-c p-30 lh-0 fsz-sm c-grey-600">
           <span>Copyright © 2017 Designed by <a href="https://colorlib.com" target="_blank" title="Colorlib">Colorlib</a>. All rights reserved.</span>
         </footer>

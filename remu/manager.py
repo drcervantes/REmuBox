@@ -140,7 +140,6 @@ class Manager():
             url = self.remote.build_url(server, server_port, "start_unit", session=session_id)
             self.remote.request(url)
 
-    def insert_server(self, host, port):
-        """ TODO """
-        db.insert_server(host, int(port))
-        return True
+class Monitor():
+    def __init__(self):
+        print "probs do somethings here"

@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, FileField, TextAreaField
 from wtforms.validators import DataRequired
 
 class LoginForm(FlaskForm):
@@ -12,3 +12,12 @@ class AddServerForm(FlaskForm):
     address = StringField('Address', validators=[DataRequired()])
     port = StringField('Port', validators=[DataRequired()])
     submit = SubmitField('Add Server')
+
+class AddWorkshopForm(FlaskForm):
+    name = StringField('Workshop Name', validators=[DataRequired()])
+    description = TextAreaField('Description', validators=[DataRequired()])
+    mini = StringField('Min Instances', validators=[DataRequired()])
+    maxi = StringField('Max Instances', validators=[DataRequired()])
+    walkthrough = FileField('Walkthrough', validators=[DataRequired()])
+    enab = BooleanField('Enabled')
+    submit = SubmitField('Add Workshop')

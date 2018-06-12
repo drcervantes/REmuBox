@@ -37,11 +37,7 @@ def logout():
 @bp.route('/servers', methods=['GET', 'POST'])
 @login_required
 def servers():
-    form = forms.AddServerForm()
-    if form.validate_on_submit():
-        print('Add server {}:{}'.format(form.host.data, form.port.data))
-        # return flask.redirect('/')
-    return render_template('servers.html', form=form)
+    return render_template('servers.html')
 
 @bp.route('/add_server', methods=['GET', 'POST'])
 @login_required
@@ -49,6 +45,22 @@ def add_server():
     form = forms.AddServerForm()
     if form.validate_on_submit():
         db.insert_server(form.address.data, form.port.data)
-        msg = "Server was added"
-        return render_template('add_server.html', form=form, msg=msg)    
+        return redirect(url_for('gui.home'))
     return render_template('add_server.html', form=form)
+
+@bp.route('/add_workshop', methods=['GET', 'POST'])
+@login_required
+def add_workshop():
+    form = forms.AddWorkshopForm()
+    if form.validate_on_submit():
+        db.insert_workshop(
+            form.name.data,
+            form.description.data,
+            form.mini.data,
+            form.maxi.data,
+            form.walkthrough.data,
+            form.enab.data
+        )
+        # form.file.data.save('uploads/' + filename)
+        return redirect(url_for('gui.home'))
+    return render_template('add_workshop.html', form=form)

@@ -107,26 +107,30 @@ class Manager():
             db.update_session(workshop, session, False)
             return session, password
 
-        session = str(bson.ObjectId())
-        password = remu.util.rand_str(int(self.config['remu']['pass_len']))
-        db.insert_session(session, server, workshop, [], password, False)
+        sid = str(bson.ObjectId())
+        password = remu.util.rand_str(int(self.config['REMU']['pass_len']))
+        db.insert_session(server, sid, workshop, password, False)
 
         return session
 
     def start_unit(self, server, workshop, session_id):
         """ TODO """
-        session = db.get_session(session_id, server)
+
+        # THIS NEEDS TO BE REWORKED
+        # EXISTENCE SHOULDNT DEPEND ON PORTS
+        # MAYBE CHECK IF THERE ARE NO MACHINES????
+        session = db.get_session(server, session_id)
         if server == "127.0.0.1":
             # Workshop unit doesn't exist yet
-            if not session['ports']:
-                ports = self.server.clone_unit(workshop, session_id)
-                db.update_session_ports(session_id, server, ports)
+            if not session.machines:
+                path = self.server.clone_unit(workshop, session_id)
+                for machine in self.server.unit_to_str(path):
+                    db.insert_machine(server, session_id, machine['name'], machine['port'])
             self.server.start_unit(session_id)
+            
         else:
-            # We will be using a remote server
             server_port = db.get_server(server)['port']
 
-            # There is no unit ready so clone a new one
             if not session['ports']:
                 url = self.remote.build_url(
                     server,

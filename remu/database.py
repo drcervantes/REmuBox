@@ -1,5 +1,5 @@
 """ TODO """
-from remu.models import Server, Workshop, Session, User
+from models import Server, Workshop, Session, User, Machine
 
 def get_workshop(name):
     """Returns the workshop entry corresponding to the workshop name."""
@@ -12,22 +12,23 @@ def get_all_workshops():
     return [w.to_mongo().to_dict() for w in workshops]
 
 def get_user(username):
+    """ TODO """
     return User.objects(name=username).first()
 
-def get_server(host, json=False):
+def get_server(host):
     """Returns the server entry corresponding to the server host."""
     server = Server.objects(ip=host).first()
     return server.to_mongo().to_dict()
 
-def get_all_servers(json=False):
+def get_all_servers():
     """Returns all server entries as a list of dictionaries unless json is True."""
     servers = Server.objects().exclude('id')
     return [s.to_mongo().to_dict() for s in servers]
 
-def get_session(host, session_id):
+def get_session(ip, sid):
     """ TODO """
-    server = Server.objects(ip=host).first()
-    return server.session[session_id].to_mongo().to_dict()
+    server = Server.objects(ip=ip).first()
+    return server.session[sid].to_mongo().to_dict()
 
 def get_available_session(host, workshop):
     """Returns the first available session for the specified workshop."""
@@ -104,14 +105,19 @@ def insert_workshop(name, desc, min_units, max_units, walkthrough, enabled):
     )
     workshop.save()
 
-def insert_session(session_id, host, workshop_name, ports, password, available):
+def insert_session(ip, sid, name, password, available):
     """ TODO """
-    workshop = Workshop.objects(name=workshop_name).first()
-    session = Session(workshop=workshop, ports=ports, password=password, available=available)
-    server = Server.objects(ip=host).first()
-    server.sessions[session_id] = session
+    workshop = Workshop.objects(name=name).first()
+    session = Session(workshop=workshop, password=password, available=available)
+    server = Server.objects(ip=ip).first()
+    server.sessions[sid] = session
     server.save()
-    return session_id
+
+def insert_machine(ip, sid, name, port):
+    server = Server.objects(ip=ip).first()
+    session = server.sessions[sid]
+    session.machines.append(Machine(name=name, port=port))
+    session.save()
 
 def remove_session(host, session_id):
     """Remove a session for the corresponding server document."""

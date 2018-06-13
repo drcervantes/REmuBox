@@ -21,7 +21,6 @@ Restoring needs to be finished
 When removing the machine, may need to remove snapshot first
 """
 
-
 class WorkshopManager():
     def __init__(self, config):
         self.vbox_path = config['REMU']['vbox_manage']
@@ -29,6 +28,15 @@ class WorkshopManager():
 
     def __del__(self):
         del self.vbox
+
+    def unit_to_str(self, path):
+        machines = []
+        for m in self.get_unit_machines(path):
+            machines.append({
+                'name': m.name,
+                'port': m.vrde_server.get_vrde_property('TCP/Ports')
+            })
+        return res
 
     def set_group(self, machine, group):
         """Set the group for a virtual machine."""
@@ -106,7 +114,6 @@ class WorkshopManager():
 
         return unit_path
 
-    
     def get_workshop_units(self, workshop_name):
         group_list = list(self.vbox.machine_groups)
         units = []
@@ -121,6 +128,7 @@ class WorkshopManager():
         for g in groups:
             if g.find(session) >= 0:
                 return g
+        return None
 
     def get_unit_machines(self, unit):
         """Get all machines in a specific unit."""
@@ -186,7 +194,6 @@ class WorkshopManager():
             except Exception:
                 logging.error("Error deleting machine: %s", machine.name)
 
-
     def get_vm_stats(self, machine):
         stats = {}
         session = machine.create_session()
@@ -202,14 +209,12 @@ class WorkshopManager():
         session.unlock_machine()
         return stats
 
-
     def get_unit_stats(self, unit):
         stats = {}
         machines = self.vbox.get_machines_by_groups([unit,])
         for machine in machines:
             stats[machine.name] = get_vm_stats(machine)
         return stats
-
 
     def get_workshop_stats(self, workshop_name):
         stats = {}
@@ -218,7 +223,6 @@ class WorkshopManager():
             stats[unit_name] = get_unit_stats(unit)
         return stats
 
-
     def get_vbox_stats(self):
         stats = {}
         workshops = [group for group in self.vbox.machine_groups if group.find("Template") > 0]
@@ -226,7 +230,6 @@ class WorkshopManager():
             workshop_name = workshop.split("/")[1].split("-")[0]
             stats[workshop_name] = get_workshop_stats(workshop_name)
         return stats
-
 
     def _parse_config(self, config_file):
         tree = et.parse(config_file)
@@ -241,7 +244,6 @@ class WorkshopManager():
 
         return workshop
 
-
     def get_templates(self, template_dir):
         workshops = []
 
@@ -255,7 +257,6 @@ class WorkshopManager():
             
         return workshops
 
-
     def _progressBar(self, progress, wait=5000):
         try:
             while not progress.completed:
@@ -268,7 +269,6 @@ class WorkshopManager():
             if progress.cancelable:
                 logging.error("Canceling task...")
                 progress.cancel()
-
 
     def _import_wsu(self, template):
         logging.debug("Importing template: " + template["name"])
@@ -287,7 +287,6 @@ class WorkshopManager():
             progress, snap_id = session.machine.take_snapshot('WSU_Snap', 'Snapshot for creating workshop units.', False)
             progress.wait_for_completion()
             session.unlock_machine()
-
 
     def import_templates(self, template_dir):
         """Imports all appliances from the templates directory if they are not already imported

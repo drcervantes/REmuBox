@@ -115,10 +115,6 @@ class Manager():
 
     def start_unit(self, server, workshop, session_id):
         """ TODO """
-
-        # THIS NEEDS TO BE REWORKED
-        # EXISTENCE SHOULDNT DEPEND ON PORTS
-        # MAYBE CHECK IF THERE ARE NO MACHINES????
         session = db.get_session(server, session_id)
         if server == "127.0.0.1":
             # Workshop unit doesn't exist yet
@@ -127,22 +123,22 @@ class Manager():
                 for machine in self.server.unit_to_str(path):
                     db.insert_machine(server, session_id, machine['name'], machine['port'])
             self.server.start_unit(session_id)
-            
-        else:
-            server_port = db.get_server(server)['port']
 
-            if not session['ports']:
-                url = self.remote.build_url(
-                    server,
-                    server_port,
-                    "clone_unit",
-                    workshop=workshop,
-                    session=session_id
-                )
-                ports = self.remote.request(url)
-                db.update_session_ports(session_id, server, ports)
-            url = self.remote.build_url(server, server_port, "start_unit", session=session_id)
-            self.remote.request(url)
+        # else:
+        #     server_port = db.get_server(server)['port']
+
+        #     if not session['ports']:
+        #         url = self.remote.build_url(
+        #             server,
+        #             server_port,
+        #             "clone_unit",
+        #             workshop=workshop,
+        #             session=session_id
+        #         )
+        #         ports = self.remote.request(url)
+        #         db.update_session_ports(session_id, server, ports)
+        #     url = self.remote.build_url(server, server_port, "start_unit", session=session_id)
+        #     self.remote.request(url)
 
 class Monitor():
     def __init__(self):

@@ -1,7 +1,6 @@
-import json
 import logging
 
-import workshop
+from remu.workshop import WorkshopManager
 
 """
 Things that need to be done:
@@ -10,27 +9,30 @@ Things that need to be done:
     4. Use glances to obtain server state.
 """
 
+l = logging.getLogger('default')
+
 class Server():
-    def __init__(self):
-        self.manager = workshop.WorkshopManager()
+    def __init__(self, config):
+        self.config = config
+        self.manager = WorkshopManager(config)
 
     def __del__(self):
         del self.manager
 
-    def start_unit(self, session, save=False):
+    def start(self, session, save=False):
         try:
-            unit = self.manager.get_unit(session)
-            self.manager.start_wsu(unit)
+            path = self.manager.get_unit(session)
+            self.manager.start_unit(path)
 
-            if save:    
-                self.manager.save_wsu(unit)
+            if save:
+                self.manager.save_unit(path)
         except Exception as e:
             return False
         return True
 
-    def clone_unit(workshop, session):
+    def clone(self, workshop, session):
         """Clones a workshop unit and returns a list of ports for all VRDE enabled machines."""
-        unit = self.manager.clone_wsu(workshop, session)
+        unit = self.manager.clone_unit(workshop, session)
 
         ports = []
         for machine in self.manager.get_unit_machines(unit):
@@ -39,44 +41,53 @@ class Server():
                 ports.append(port)
         return ports
 
-    def stop_unit(self, ports):
-        """Session folder needs to be deleted"""
-        unit = request.args.get("unit")
-        if unit is None:
-            logging.error("Error stopping unit: no name provided.")
-            return
-        split = unit.find("WSU")
-        workshop_name = unit[0:split-1]
-        extension = unit[split:]
-        unit_path = "/" + workshop_name + "-Units/" + extension
+    # def stop_unit(self, ports):
+    #     """Session folder needs to be deleted"""
+    #     unit = request.args.get("unit")
+    #     if unit is None:
+    #         logging.error("Error stopping unit: no name provided.")
+    #         return
+    #     split = unit.find("WSU")
+    #     workshop_name = unit[0:split-1]
+    #     extension = unit[split:]
+    #     unit_path = "/" + workshop_name + "-Units/" + extension
 
-        remove = request.args.get("remove")
-        if remove is None:
-            remove = 'True'
+    #     remove = request.args.get("remove")
+    #     if remove is None:
+    #         remove = 'True'
 
-        try:
-            self.manager.stop_wsu(unit_path)
-            if remove == 'True':
-                self.manager.delete_wsu(unit_path)
-            else:
-                self.manager.restore_wsu(unit_path)
-        except Exception:
-            logging.error("Error stopping unit: " + unit_path)
-            return "FAILURE"
+    #     try:
+    #         self.manager.stop_wsu(unit_path)
+    #         if remove == 'True':
+    #             self.manager.delete_wsu(unit_path)
+    #         else:
+    #             self.manager.restore_wsu(unit_path)
+    #     except Exception:
+    #         logging.error("Error stopping unit: " + unit_path)
+    #         return "FAILURE"
 
-        return "SUCCESS"
+    #     return "SUCCESS"
 
+    def unit_to_str(self, session):
+        path = self.manager.get_unit(session)
+        machines = []
+        for m in self.manager.get_unit_machines(path):
+            machines.append({
+                'name': m.name,
+                'port': m.vrde_server.get_vrde_property('TCP/Ports')
+            })
+        return machines
 
-    def get_workshop_list(self):
-        """Provides a list of all workshop names available on the server node."""
-        workshops = []
+    # def get_workshop_list(self):
+    #     """Provides a list of all workshop names available on the server node."""
+    #     workshops = []
 
-        for group in self.manager.vbox.machine_groups:
-            idx = group.find("-Template")
-            if idx > 0: 
-                workshops.append(group[1:idx])
+    #     for group in self.manager.vbox.machine_groups:
+    #         idx = group.find("-Template")
+    #         if idx > 0: 
+    #             workshops.append(group[1:idx])
 
-        return json.dumps(workshops)
+    #     return json.dumps(workshops)
 
     '''
     {'Route_Hijacking': {'WSU_0': {'kali-2016.2-debian_ecel_rh_WSU_0_0': {'state': MachineState(5),

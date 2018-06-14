@@ -3,13 +3,13 @@
 # The primary purpose of the gevent.monkey module is to carefully patch, in place,
 # portions of the standard library with gevent-friendly functions that behave in
 # the same way as the original (at least as closely as possible).
-from gevent import monkey
-monkey.patch_all()
+import gevent.monkey
+gevent.monkey.patch_all()
 
 import gevent
+import gevent.pywsgi as wsgi
 import logging
 import logging.config
-import gevent.pywsgi as wsgi
 import cryptography.fernet as fernet
 import urllib.parse as ulib
 import flask
@@ -17,7 +17,6 @@ import argparse
 import ast
 import signal
 import sys
-import gc
 import configparser
 import flask_login
 import remu.database as db
@@ -168,6 +167,13 @@ def main():
         'disable_existing_loggers': False
     })
 
+    if args.manager or args.web:
+        import mongoengine
+        mongoengine.connect(
+            config['DATABASE']['name'],
+            host=config['DATABASE']['ip'], 
+            port=int(config['DATABASE']['port']))
+
     # Use the arguments to determine which modules to run
     modules = []
 
@@ -183,18 +189,15 @@ def main():
         server = Server(config)
         modules.append(server)
 
-        if args.import_workshops:
-            server.import_templates()
+        # if args.import_workshops:
+        #     server.import_templates()
 
     manager = None
     if args.manager:
         from remu.manager import Manager
-        manager = Manager(config=config, server=server, nginx=nginx)
+        manager = Manager(config, server, nginx)
         modules.append(manager)
 
-    if args.manager or args.web:
-        import mongoengine
-        mongoengine.connect(host=config['DATABASE']['ip'], port=int(config['DATABASE']['port']))
 
     def signal_handler(sig, frame):
         """ TODO """
@@ -203,22 +206,21 @@ def main():
         for module in modules:
             del module
 
-        gc.collect()
         sys.exit(0)
 
     # Create our flask application
-    app = create_app(config, modules)
+    # app = create_app(config, modules)
 
-    if args.web:
-        from remu.interface import bp
-        app.register_blueprint(bp, url_prefix='/admin')
+    # if args.web:
+    #     from remu.interface import bp
+    #     app.register_blueprint(bp, url_prefix='/admin')
 
     # Set our listener to handle SIGINT and terminate the service
     signal.signal(signal.SIGINT, signal_handler)
 
-    # Start the service
-    service = wsgi.WSGIServer((config['REMU']['interface'], int(config['REMU']['port'])), app)
-    service.serve_forever()
+    # # Start the service
+    # service = wsgi.WSGIServer((config['REMU']['interface'], int(config['REMU']['port'])), app)
+    # service.serve_forever()
 
 
 LOG = logging.getLogger('default')

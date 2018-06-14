@@ -1,4 +1,7 @@
 """ TODO """
+import logging
+l = logging.getLogger('default')
+
 from remu.models import Server, Workshop, Session, User, Machine
 
 def get_workshop(name):
@@ -10,6 +13,11 @@ def get_all_workshops():
     """Returns all workshop entries as a list of dictionaries unless json is True."""
     workshops = Workshop.objects().exclude('id')
     return [w.to_mongo().to_dict() for w in workshops]
+
+def get_vrde_ports(ip, sid):
+    server = Server.objects(ip=ip).first()
+    session = server.sessions[sid]
+    return [machine.port for machine in session.machines if machine.port > 0]
 
 def get_user(username):
     """ TODO """
@@ -28,16 +36,17 @@ def get_all_servers():
 def get_session(ip, sid):
     """ TODO """
     server = Server.objects(ip=ip).first()
-    return server.session[sid].to_mongo().to_dict()
+    return server.sessions[sid].to_mongo().to_dict()
 
 def get_available_session(host, workshop):
     """Returns the first available session for the specified workshop."""
     server = Server.objects(ip=host).first()
 
-    for s_id, session in server.sessions.items():
-        if session['available'] and session.workshop['name'] == workshop:
-            return s_id, session['password']
-    return None
+    if server.sessions:
+        for s_id, session in server.sessions.items():
+            if session['available'] and session.workshop['name'] == workshop:
+                return s_id, session['password']
+    return None, None
 
 def session_count(host, check_available=False):
     """Returns the current number of sessions. If check_available is true,
@@ -90,7 +99,7 @@ def insert_server(host, port):
         server.save()
         return True
     except Exception as exc:
-        # log.exception(str(e))
+        l.exception(str(exc))
         return False
 
 def insert_workshop(name, desc, min_units, max_units, walkthrough, enabled):

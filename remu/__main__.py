@@ -17,11 +17,11 @@ import argparse
 import ast
 import signal
 import sys
-import configparser
 import flask_login
 import remu.database as db
+from remu.settings import config
 
-def create_app(config, modules):
+def create_app(modules):
     """
     Setup the Flask application to handle any remote service routine calls. This includes
     interaction between the modules when run remotely and the front-end.
@@ -32,6 +32,9 @@ def create_app(config, modules):
         DEBUG=True,
         SECRET_KEY=config['REMU']['secret_key'].encode()
     ))
+
+    key = config['REMU']['secret_key'].encode()
+    fern = fernet.Fernet(key)
 
     login_manager = flask_login.LoginManager(app)
     login_manager.login_view = 'gui.login'
@@ -49,7 +52,7 @@ def create_app(config, modules):
 
         url = ulib.urlparse(flask.request.url)
         path = url.path[1:].encode()
-        path = config['REMU']['fernet'].decrypt(path).decode()
+        path = fern.decrypt(path).decode()
 
         LOG.debug("Received path: %s", url.path)
 
@@ -121,19 +124,9 @@ def parse_arguments():
     )
     return parser.parse_args()
 
-def parse_config(path):
-    """ TODO """
-    parser = configparser.ConfigParser()
-    parser.read(path)
-    return {s:dict(parser.items(s)) for s in parser.sections()}
-
 def main():
     """ TODO """
     args = parse_arguments()
-    config = parse_config(args.config)
-
-    key = config['REMU']['secret_key'].encode()
-    config['REMU']['fernet'] = fernet.Fernet(key)
 
     logging.config.dictConfig({
         'version': 1,

@@ -2,30 +2,27 @@
 import logging
 import bson
 
-from remu.remote import Remote
+from remu.settings import config
 import remu.database as db
+import remu.remote
 import remu.util
 
 l = logging.getLogger('default')
 
 class Manager():
     """ TODO """
-    def __init__(self, config=None, server=None, nginx=None):
+    def __init__(self, server=None, nginx=None):
         self.nginx = nginx
-        self.config = config
-
-        self.remote = Remote(config)
 
         if server:
             self.server = server
             db.insert_server("127.0.0.1", 9000)
 
-        self.start_session("Route_Hijacking")
     def __del__(self):
         if self.server:
             db.remove_server("127.0.0.1")
 
-    def start_session(self, workshop):
+    def start_workshop(self, workshop):
         """
         Start a new session for a workshop participant.
         Returns a string containing a session id, the VRDE ports for the workshop unit,
@@ -39,7 +36,7 @@ class Manager():
         # Get the session
         session_id = self.obtain_session(server, workshop)
         l.info("Using session: %s", session_id)
-        self.start_unit(server, workshop, session_id)
+        self.start_session(server, workshop, session_id)
 
         vrde_ports = db.get_vrde_ports(server, session_id)
         l.info("Running on ports: %s", repr(vrde_ports))
@@ -111,12 +108,12 @@ class Manager():
             return session, password
 
         session = str(bson.ObjectId())
-        password = remu.util.rand_str(int(self.config['REMU']['pass_len']))
+        password = remu.util.rand_str(int(config['REMU']['pass_len']))
         db.insert_session(server, session, workshop, password, False)
 
         return session
 
-    def start_unit(self, server, workshop, session_id):
+    def start_session(self, server, workshop, session_id):
         """ TODO """
         session = db.get_session(server, session_id)
         if server == "127.0.0.1":
@@ -142,3 +139,13 @@ class Manager():
         #         db.update_session_ports(session_id, server, ports)
         #     url = self.remote.build_url(server, server_port, "start_unit", session=session_id)
         #     self.remote.request(url)
+
+    def stop_session(self, server, session_id):
+        # Stop machine
+        # Restore machine
+        # Delete session
+        # Create new session
+
+        # Stop machine
+        # Remove machine
+        # Delete session

@@ -10,6 +10,7 @@ import os
 import virtualbox
 import virtualbox.library as vboxlib
 from remu.util import rand_str
+from remu.settings import config
 
 l = logging.getLogger('default')
 
@@ -20,7 +21,7 @@ When removing the machine, may need to remove snapshot first
 """
 
 class WorkshopManager():
-    def __init__(self, config):
+    def __init__(self):
         self.vbox_path = config['REMU']['vbox_manage']
         self.vbox = virtualbox.VirtualBox()
 

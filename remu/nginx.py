@@ -2,10 +2,11 @@
 import pathlib
 import subprocess
 import remu.util
+from remu.settings import config
 
 class Nginx():
     """ TODO """
-    def __init__(self, config):
+    def __init__(self):
         self.path = pathlib.Path(config['NGINX']['path'])
 
         self.rdp_maps = self.path.parent / 'rdp_maps.conf'

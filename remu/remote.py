@@ -5,20 +5,14 @@ import threading
 import urllib.parse
 import asyncio
 import aiohttp
+import cryptography.fernet as fernet
 from remu.settings import config
-
-l = logging.getLogger(__name__)
-
-fern = fernet.Fernet(config['REMU']['secret_key'].encode())
-
-"""Create the new loop and worker thread."""
-worker = threading.Thread(target=self._start_worker, args=(asyncio.new_event_loop(),))
-worker.start()
 
 def build_url(host, port, method, **kwargs):
     """
     Construct an encrypted url for a remote request.
     """
+    global fern
     url_base = "http://{}:{}/".format(host, port)
     query = "{}?".format(method)
 
@@ -38,7 +32,7 @@ async def _request_data(url):
     session.close()
     return content.decode("utf-8")
 
-def request(surl, timeout=5):
+def request(url, timeout=5):
     """Sends an http request asychronously so as to not block the manager web service.
     Used to communicate with the other subsystems.
 
@@ -64,3 +58,11 @@ def _start_worker(loop):
     """Worker routine for asynchronous http requests."""
     asyncio.set_event_loop(loop)
     loop.run_forever()
+
+l = logging.getLogger(__name__)
+
+fern = fernet.Fernet(config['REMU']['secret_key'].encode())
+
+"""Create the new loop and worker thread."""
+worker = threading.Thread(target=_start_worker, args=(asyncio.new_event_loop(),))
+worker.start()

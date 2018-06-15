@@ -179,16 +179,16 @@ def main():
     server = None
     if args.server:
         from remu.server import Server
-        server = Server(config)
+        server = Server()
         modules.append(server)
 
-        # if args.import_workshops:
-        #     server.import_templates()
+        if args.import_workshops:
+            server.import_templates()
 
     manager = None
     if args.manager:
         from remu.manager import Manager
-        manager = Manager(config, server, nginx)
+        manager = Manager(server, nginx)
         modules.append(manager)
 
 

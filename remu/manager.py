@@ -17,7 +17,7 @@ class Manager():
         if server:
             self.server = server
             db.insert_server("127.0.0.1", 9000)
-
+        self.start_workshop("Route_Hijacking")
     def __del__(self):
         if self.server:
             db.remove_server("127.0.0.1")
@@ -141,6 +141,7 @@ class Manager():
         #     self.remote.request(url)
 
     def stop_session(self, server, session_id):
+        l.debug("not ready")
         # Stop machine
         # Restore machine
         # Delete session

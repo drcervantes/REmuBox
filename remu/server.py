@@ -12,12 +12,15 @@ Things that need to be done:
 l = logging.getLogger('default')
 
 class Server():
-    def __init__(self, config):
-        self.config = config
-        self.manager = WorkshopManager(config)
+    def __init__(self):
+        self.manager = WorkshopManager()
 
     def __del__(self):
+        # TODO: need to clean up files left from machines
         del self.manager
+
+    def import_templates(self):
+        self.manager.import_templates()
 
     def start(self, session, save=False):
         try:

@@ -88,7 +88,7 @@ class WorkshopManager():
                     port = str(self.get_free_port())
                     l.debug(" ... vrde port: %s", port)
                 else:
-                    port = 0
+                    port = "0"
                     l.debug(" ... vrde not enabled")
                 session.machine.vrde_server.set_vrde_property('TCP/Ports', port)
 
@@ -242,16 +242,16 @@ class WorkshopManager():
         workshops = []
 
         for workshop_dir in os.listdir(template_dir):
-            config_path = os.join(template_dir, workshop_dir, "config.xml")
+            config_path = os.path.join(template_dir, workshop_dir, "config.xml")
             workshop = self._parse_config(config_path)
 
             # Get the full path of the appliance for importing later
-            workshop["appliance"] = os.join(os.getcwd(), template_dir, workshop_dir, workshop["appliance"])
+            workshop["appliance"] = os.path.join(os.getcwd(), template_dir, workshop_dir, workshop["appliance"])
             workshops.append(workshop)
-            
+
         return workshops
 
-    def _progressBar(self, progress, wait=5000):
+    def _progress_bar(self, progress, wait=5000):
         try:
             while not progress.completed:
                 print("Completion: %s %%\r" % (str(progress.percent)), end="")
@@ -271,20 +271,23 @@ class WorkshopManager():
         appliance.read(template["appliance"])
 
         progress = appliance.import_machines()
-        self._progressBar(progress)
+        self._progress_bar(progress)
 
         for machine_id in appliance.machines:
             machine = self.vbox.find_machine(machine_id)
+            l.debug(" ... importing machine: %s", machine.name)
 
             self.set_group(machine.name, "/" + template["name"] + "-Template")
             session = machine.create_session()
-            progress, snap_id = session.machine.take_snapshot('WSU_Snap', 'Snapshot for creating workshop units.', False)
+            progress, dummy = session.machine.take_snapshot('WSU_Snap', 'Snapshot for creating workshop units.', False)
             progress.wait_for_completion()
             session.unlock_machine()
+        l.debug("%s imported successfully", template["name"])
 
-    def import_templates(self, template_dir):
-        """Imports all appliances from the templates directory if they are not already imported
-        into VirtualBox. 
+    def import_templates(self):
+        """
+        Imports all appliances from the templates directory if they are not already imported
+        into VirtualBox.
         """
         # Grab templates already imported
         existing_templates = []
@@ -294,7 +297,8 @@ class WorkshopManager():
             if idx > 0:
                 existing_templates.append(group[1:idx])
 
-        templates = [t for t in self.get_templates(template_dir) if t["name"] not in existing_templates]
+        path = config['REMU']['workshops']
+        templates = [t for t in self.get_templates(path) if t["name"] not in existing_templates]
 
         for wsu in templates:
             self._import_wsu(wsu)

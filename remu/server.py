@@ -1,7 +1,7 @@
 import logging
 import virtualbox
 
-from remu.importer import import_templates
+from remu.importer import import_new_templates
 from remu.workshop import WorkshopManager
 from remu.settings import config
 
@@ -25,7 +25,7 @@ class Server():
         del self.manager
 
     def import_templates(self):
-        import_templates()
+        import_new_templates()
 
     def start(self, session, save=False):
         try:

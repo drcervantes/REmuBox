@@ -72,7 +72,7 @@ def _import_template(vbox, template):
         session.unlock_machine()
     l.debug("%s imported successfully", template["name"])
 
-def import_templates(vbox, alt_config=None):
+def import_new_templates(vbox, alt_config=None):
     """
     Imports all appliances from the templates directory if they are not already imported
     into VirtualBox.

@@ -4,7 +4,6 @@ import bson
 
 from remu.settings import config
 import remu.database as db
-import remu.remote
 import remu.util
 
 l = logging.getLogger('default')
@@ -13,11 +12,11 @@ class Manager():
     """ TODO """
     def __init__(self, server=None, nginx=None):
         self.nginx = nginx
+        self.server = server
 
         if server:
-            self.server = server
             db.insert_server("127.0.0.1", 9000)
-        self.start_workshop("Route_Hijacking")
+        # self.start_workshop("Route_Hijacking")
     def __del__(self):
         if self.server:
             db.remove_server("127.0.0.1")
@@ -36,7 +35,11 @@ class Manager():
         # Get the session
         session_id = self.obtain_session(server, workshop)
         l.info("Using session: %s", session_id)
-        self.start_session(server, workshop, session_id)
+
+        if server == "127.0.0.1":
+            self.start_local_session(workshop, session_id)
+        else:
+            self.start_remote_session(server, workshop, session_id)
 
         vrde_ports = db.get_vrde_ports(server, session_id)
         l.info("Running on ports: %s", repr(vrde_ports))
@@ -113,40 +116,44 @@ class Manager():
 
         return session
 
-    def start_session(self, server, workshop, session_id):
+    def start_local_session(self, workshop, session_id):
         """ TODO """
-        session = db.get_session(server, session_id)
-        if server == "127.0.0.1":
-            # Workshop unit doesn't exist yet
-            if not session['machines']:
-                self.server.clone(workshop, session_id)
-                for machine in self.server.unit_to_str(session_id):
-                    db.insert_machine(server, session_id, machine['name'], machine['port'])
-            self.server.start(session_id)
+        session = db.get_session('127.0.0.1', session_id)
 
-        # else:
-        #     server_port = db.get_server(server)['port']
+        # Workshop unit doesn't exist yet
+        if not session['machines']:
+            self.server.clone(workshop, session_id)
+            for machine in self.server.unit_to_str(session_id):
+                db.insert_machine('127.0.0.1', session_id, machine['name'], machine['port'])
 
-        #     if not session['ports']:
-        #         url = self.remote.build_url(
-        #             server,
-        #             server_port,
-        #             "clone_unit",
-        #             workshop=workshop,
-        #             session=session_id
-        #         )
-        #         ports = self.remote.request(url)
-        #         db.update_session_ports(session_id, server, ports)
-        #     url = self.remote.build_url(server, server_port, "start_unit", session=session_id)
-        #     self.remote.request(url)
+        self.server.start(session_id)
 
-    def stop_session(self, server, session_id):
+    def start_remote_session(self, server, workshop, session_id):
+        """ TODO """
+        server_port = db.get_server(server)['port']
+
+        if not session['ports']:
+            url = self.remote.build_url(
+                server,
+                server_port,
+                "clone_unit",
+                workshop=workshop,
+                session=session_id
+            )
+            ports = self.remote.request(url)
+            db.update_session_ports(session_id, server, ports)
+        url = self.remote.build_url(server, server_port, "start_unit", session=session_id)
+        self.remote.request(url)
+
+    def stop_local_session(self, session_id):
         l.debug("not ready")
-        # Stop machine
-        # Restore machine
-        # Delete session
-        # Create new session
+        self.server.stop_unit(session_id)
+        workshop = db.get_workshop_from_session("127.0.0.1", session_id)
+        db.remove_session("127.0.0.1", session_id)
 
-        # Stop machine
-        # Remove machine
-        # Delete session
+        if db.session_count_by_workshop("127.0.0.1", workshop['name']) < workshop['min_instances']:
+            # Restore machine & Create new session
+            self.server.restore_unit(session_id)
+        else:
+            # Remove machine
+            l.debug("not ready")

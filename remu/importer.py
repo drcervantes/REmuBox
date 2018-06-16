@@ -8,6 +8,10 @@ from remu.settings import config
 
 l = logging.getLogger('default')
 
+"""
+TODO: vrde port is checked by the machine configuration and not the xml
+"""
+
 def _parse_config(config_file):
     tree = et.parse(config_file)
     root = tree.getroot().find("workshop-settings")

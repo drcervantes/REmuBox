@@ -15,13 +15,12 @@ import urllib.parse as ulib
 import flask
 import argparse
 import ast
-import signal
-import sys
 import flask_login
+
 import remu.database as db
 from remu.settings import config
 
-def create_app(modules):
+def create_app():
     """
     Setup the Flask application to handle any remote service routine calls. This includes
     interaction between the modules when run remotely and the front-end.
@@ -54,29 +53,29 @@ def create_app(modules):
         path = url.path[1:].encode()
         path = fern.decrypt(path).decode()
 
-        LOG.debug("Received path: %s", url.path)
+        l.debug("Received path: %s", url.path)
 
-        method, params = path.split('?')
-        params = ulib.parse_qsl(params)
+        method, query = path.split('?')
+        query = ulib.parse_qsl(query)
 
-        if params:
-            args = {}
-            for k, v in params:
+        if query:
+            params = {}
+            for k, v in query:
                 try:
                     e = ast.literal_eval(v)
                     args[k] = e
                 except ValueError:
                     args[k] = v
         else:
-            args = params
+            params = query
 
-        LOG.debug("Parsed args: %s", str(args))
+        l.debug("Parsed args: %s", str(params))
 
         result = ""
-        for module in modules:
-            function = getattr(module, method)
+        for m in modules:
+            function = getattr(m, method)
             if function:
-                result = function(**args)
+                result = function(**params)
                 break
 
         # We must return a string for the Flask view --- needs to be encrypted??
@@ -124,97 +123,90 @@ def parse_arguments():
     )
     return parser.parse_args()
 
-def main():
-    """ TODO """
-    args = parse_arguments()
 
-    logging.config.dictConfig({
-        'version': 1,
-        'formatters': {
-            'default': {
-                'format': '%(asctime)s - %(levelname)s - %(message)s',
-                'datefmt': '%Y-%m-%d %H:%M:%S'
-            }
+args = parse_arguments()
+
+logging.config.dictConfig({
+    'version': 1,
+    'formatters': {
+        'default': {
+            'format': '%(asctime)s - %(levelname)s - %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S'
+        }
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'default',
+            'stream': 'ext://sys.stdout'
         },
-        'handlers': {
-            'console': {
-                'level': 'DEBUG',
-                'class': 'logging.StreamHandler',
-                'formatter': 'default',
-                'stream': 'ext://sys.stdout'
-            },
-            'file': {
-                'level': 'DEBUG',
-                'class': 'logging.handlers.RotatingFileHandler',
-                'formatter': 'default',
-                'filename': config['REMU']['log_file'],
-                'maxBytes': 1024
-            }
-        },
-        'loggers': {
-            'default': {
-                'level': 'DEBUG',
-                'handlers': ['console', 'file']
-            }
-        },
-        'disable_existing_loggers': False
-    })
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'default',
+            'filename': config['REMU']['log_file'],
+            'maxBytes': 1024
+        }
+    },
+    'loggers': {
+        'default': {
+            'level': 'DEBUG',
+            'handlers': ['console', 'file']
+        }
+    },
+    'disable_existing_loggers': False
+})
 
-    if args.manager or args.web:
-        import mongoengine
-        mongoengine.connect(
-            config['DATABASE']['name'],
-            host=config['DATABASE']['ip'], 
-            port=int(config['DATABASE']['port']))
+l = logging.getLogger('default')
 
-    # Use the arguments to determine which modules to run
-    modules = []
+# if args.manager or args.web:
+#     import mongoengine
+#     mongoengine.connect(
+#         config['DATABASE']['name'],
+#         host=config['DATABASE']['ip'],
+#         port=int(config['DATABASE']['port']))
 
-    nginx = None
-    if args.nginx:
-        from remu.nginx import Nginx
-        nginx = Nginx(config)
-        modules.append(nginx)
+# Use the arguments to determine which modules to run
+modules = []
 
-    server = None
-    if args.server:
-        from remu.server import Server
-        server = Server()
-        modules.append(server)
+nginx = None
+if args.nginx:
+    from remu.nginx import Nginx
+    nginx = Nginx()
+    modules.append(nginx)
 
-        if args.import_workshops:
-            server.import_templates()
+server = None
+if args.server:
+    from remu.server import Server
+    server = Server()
+    modules.append(server)
 
-    manager = None
-    if args.manager:
-        from remu.manager import Manager
-        manager = Manager(server, nginx)
-        modules.append(manager)
+    if args.import_workshops:
+        server.import_templates()
 
+manager = None
+if args.manager:
+    from remu.manager import Manager
+    manager = Manager(server, nginx)
+    modules.append(manager)
 
-    def signal_handler(sig, frame):
-        """ TODO """
-        print('Shutting down...')
-        # remu.stop()
-        for module in modules:
-            del module
+# Create our flask application
+application = create_app()
 
-        sys.exit(0)
+if args.web:
+    from remu.interface import bp
+    application.register_blueprint(bp, url_prefix='/admin')
 
-    # Create our flask application
-    # app = create_app(config, modules)
+try:
+    l.info("Starting service. Use Ctrl-C to terminate gracefully.")
+    service = wsgi.WSGIServer((config['REMU']['interface'], int(config['REMU']['port'])), application)
+    service.serve_forever()
+except (KeyboardInterrupt, SystemExit):
+    l.info('Shutting down...')
 
-    # if args.web:
-    #     from remu.interface import bp
-    #     app.register_blueprint(bp, url_prefix='/admin')
+    if service.started:
+        service.close()
 
-    # Set our listener to handle SIGINT and terminate the service
-    signal.signal(signal.SIGINT, signal_handler)
-
-    # # Start the service
-    # service = wsgi.WSGIServer((config['REMU']['interface'], int(config['REMU']['port'])), app)
-    # service.serve_forever()
-
-
-LOG = logging.getLogger('default')
-main()
+    for module in modules:
+        del module

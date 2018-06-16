@@ -1,6 +1,9 @@
 import logging
+import virtualbox
 
+from remu.importer import import_templates
 from remu.workshop import WorkshopManager
+from remu.settings import config
 
 """
 Things that need to be done:
@@ -13,14 +16,16 @@ l = logging.getLogger('default')
 
 class Server():
     def __init__(self):
-        self.manager = WorkshopManager()
+        self.vbox = virtualbox.VirtualBox()
+        self.manager = WorkshopManager(self.vbox)
 
     def __del__(self):
         # TODO: need to clean up files left from machines
+        del self.vbox
         del self.manager
 
     def import_templates(self):
-        self.manager.import_templates()
+        import_templates()
 
     def start(self, session, save=False):
         try:

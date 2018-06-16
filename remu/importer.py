@@ -1,6 +1,8 @@
 import xml.etree.ElementTree as et
 import os
+import sys
 import logging
+import subprocess
 
 from remu.settings import config
 
@@ -58,7 +60,8 @@ def _import_template(vbox, template):
         machine = vbox.find_machine(machine_id)
         l.debug(" ... importing machine: %s", machine.name)
 
-        set_group(machine.name, "/" + template["name"] + "-Template")
+        group = "/" + template["name"] + "-Template"
+        output = subprocess.check_output([config['REMU']['vbox_manage'], "modifyvm", machine.name, "--groups", group])
         session = machine.create_session()
         progress, dummy = session.machine.take_snapshot(
             'Original',

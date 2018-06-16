@@ -1,7 +1,6 @@
 import logging
 import socket
 import subprocess
-import sys
 import contextlib
 
 import virtualbox
@@ -18,16 +17,12 @@ When removing the machine, may need to remove snapshot first
 """
 
 class WorkshopManager():
-    def __init__(self):
-        self.vbox_path = config['REMU']['vbox_manage']
-        self.vbox = virtualbox.VirtualBox()
-
-    def __del__(self):
-        del self.vbox
+    def __init__(self, vbox):
+        self.vbox = vbox
 
     def set_group(self, machine, group):
         """Set the group for a virtual machine."""
-        return subprocess.check_output([self.vbox_path, "modifyvm", machine, "--groups", group])
+        return subprocess.check_output([config['REMU']['vbox_manage'], "modifyvm", machine, "--groups", group])
 
     def get_first_snapshot(self, machine):
         if machine.snapshot_count < 1:

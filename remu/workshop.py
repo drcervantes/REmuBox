@@ -51,7 +51,7 @@ class WorkshopManager():
         """
         group_list = list(self.vbox.machine_groups)
         template = "/" + workshop + "-Template"
-        l.debug("Cloning template: %s", template)
+        l.info("Cloning template: %s", template)
 
         if template not in group_list:
             raise Exception("Template for %s was not found!" % workshop)
@@ -68,20 +68,20 @@ class WorkshopManager():
 
                 machine_name = machine.name + "_" + session_id
                 session.machine.name = machine_name
-                l.debug("Cloned machine: %s", machine_name)
+                l.info("Cloned machine: %s", machine_name)
                 
                 adapter = session.machine.get_network_adapter(0)
 
                 adapter.attachment_type = vboxlib.NetworkAttachmentType(3)
                 adapter.internal_network = int_net
-                l.debug(" ... intnet: %s", int_net)     
+                l.info(" ... intnet: %s", int_net)     
 
                 if session.machine.vrde_server.enabled:
                     port = str(self.get_free_port())
-                    l.debug(" ... vrde port: %s", port)
+                    l.info(" ... vrde port: %s", port)
                 else:
                     port = "0"
-                    l.debug(" ... vrde not enabled")
+                    l.info(" ... vrde not enabled")
                 session.machine.vrde_server.set_vrde_property('TCP/Ports', port)
 
                 # session.machine.save_settings()
@@ -120,55 +120,100 @@ class WorkshopManager():
         """Get all machines in a specific unit."""
         return self.vbox.get_machines_by_groups([unit,])
 
-    def start_unit(self, unit):
-        l.debug("Starting unit: %s", unit)
+    def start_unit(self, sid):
+        unit = self.get_unit(sid)
+        l.info("Starting unit: %s", unit)
         for machine in self.get_unit_machines(unit):
-            if machine.state < vboxlib.MachineState.running:
-                l.debug("Starting machine: " + machine.name)
+            if machine.state == vboxlib.MachineState(1) or \
+               machine.state == vboxlib.MachineState(2):
+                l.info(" ... starting machine: %s", machine.name)
                 try:
                     progress = machine.launch_vm_process(type_p="headless")
                     progress.wait_for_completion()
                 except Exception:
-                    l.error("Error starting machine: %s", machine.name)
+                    l.exception("Fatal error starting machine: %s", machine.name)
+                    return False
+            else:
+                l.error("Error starting machine: %s. Machine is not powered off or saved.", machine.name)
+                return False
+        return True
 
-    def save_unit(self, unit):
-        l.debug("Saving unit: " + unit)
+    def save_unit(self, sid):
+        unit = self.get_unit(sid)
+        l.info("Saving unit: %s", unit)
+
         for machine in self.get_unit_machines(unit):
-            if machine.state >= vboxlib.MachineState.running:
-                l.debug("Saving machine: " + machine.name)
+            if machine.state == vboxlib.MachineState(5):
+                l.info(" ... saving machine: %s", machine.name)
                 try:
                     session = machine.create_session()
                     progress = session.machine.save_state()
                     progress.wait_for_completion()
                     session.unlock_machine()
                 except Exception:
-                    l.error("Error saving machine: %s", machine.name)
+                    l.exception("Fatal error saving machine: %s", machine.name)
+                    return False
+            else:
+                l.error("Error saving machine: %s. Machine is not running.", machine.name)
+                return False
+        return True
 
-    def stop_unit(self, unit):
-        l.debug("Stopping unit: %s", unit)
+    def stop_unit(self, sid):
+        unit = self.get_unit(sid)
+        l.info("Stopping unit: %s", unit)
         for machine in self.get_unit_machines(unit):
-            if machine.state >= vboxlib.MachineState.running:
-                l.debug("Stopping: " + machine.name)
+            if machine.state == vboxlib.MachineState(5):
+                l.info(" ... stopping machine: %s", machine.name)
                 try:
                     session = machine.create_session()
                     progress = session.console.power_down()
                     progress.wait_for_completion()
                     session.unlock_machine()
                 except Exception:
-                    l.error("Error stopping machine: %s", machine.name)   
+                    l.exception("Fatal error stopping machine: %s", machine.name)
+                    return False
+            else:
+                l.error("Error stopping machine: %s. Machine is not running.", machine.name)
+                return False
+        return True
 
-    def restore_unit(self, unit):
-        l.debug("Restoring unit: %s", unit)
+    def restore_unit(self, sid, new_sid):
+        unit = self.get_unit(sid)
+        l.info("Restoring unit: %s", unit)
         for machine in self.get_unit_machines(unit):
-            l.debug("Restoring machine: %s", machine.name)
-            try:
-                snapshot = self.get_first_snapshot(machine)
-                session = machine.create_session()
-                progress = session.machine.restore_snapshot(snapshot)
-                progress.wait_for_completion()
-            except Exception:
-                l.error("Error restoring machine: %s", machine.name)
-            session.unlock_machine()
+            if machine.state == vboxlib.MachineState(1) or \
+               machine.state == vboxlib.MachineState(2):
+                l.info(" ... restoring machine: %s", machine.name)
+                try:
+                    # Obtain snapshot of the original state
+                    snapshot = self.get_first_snapshot(machine)
+
+                    # Restore the machine
+                    session = machine.create_session()
+                    progress = session.machine.restore_snapshot(snapshot)
+                    progress.wait_for_completion()
+
+                    # Change the machine name
+                    name = session.machine.name
+                    base_end = name.rfind('_') + 1
+                    name = name[:base_end] + new_sid
+                    session.machine.name = name
+                    l.debug(" ... new machine name: %s", name)
+
+                    session.unlock_machine()
+
+                    # Change the session id in the group name
+                    group = machine.groups[0]
+                    base_end = group.rfind('/') + 1
+                    group = group[:base_end] + new_sid
+                    l.debug(" ... new group name: %s, group")
+                    self.set_group(machine.name, group)
+                except Exception:
+                    l.error("Error restoring machine: %s", machine.name)
+            else:
+                l.error("Error restoring machine: %s. Machine is not powered off or saved.", machine.name)
+                return False
+        return True
 
     def delete_unit(self, unit):
         l.debug("Deleting unit: %s", unit)
@@ -180,41 +225,43 @@ class WorkshopManager():
             except Exception:
                 l.error("Error deleting machine: %s", machine.name)
 
-    def get_vm_stats(self, machine):
-        stats = {}
-        session = machine.create_session()
-        stats["state"] = machine.state._value
-        stats["vrde-enabled"] = session.machine.vrde_server.enabled
-        if session.machine.vrde_server.enabled == 1 and machine.state == vboxlib.MachineState.running:
-            vrde = session.console.vrde_server_info
-            stats["vrde-active"] = vrde.active
-            stats["vrde-port"] = vrde.port
-            stats["vrde-start-time"] = vrde.begin_time
-            stats["vrde-bytes-sent"] = vrde.bytes_sent
-            stats["vrde-bytes-received"] = vrde.bytes_received
-        session.unlock_machine()
-        return stats
 
-    def get_unit_stats(self, unit):
-        stats = {}
-        machines = self.vbox.get_machines_by_groups([unit,])
-        for machine in machines:
-            stats[machine.name] = get_vm_stats(machine)
-        return stats
 
-    def get_workshop_stats(self, workshop_name):
-        stats = {}
-        for unit in get_workshop_units(workshop_name):
-            unit_name = unit.split("/")[2]
-            stats[unit_name] = get_unit_stats(unit)
-        return stats
+    # def get_vm_stats(self, machine):
+    #     stats = {}
+    #     session = machine.create_session()
+    #     stats["state"] = machine.state._value
+    #     stats["vrde-enabled"] = session.machine.vrde_server.enabled
+    #     if session.machine.vrde_server.enabled == 1 and machine.state == vboxlib.MachineState.running:
+    #         vrde = session.console.vrde_server_info
+    #         stats["vrde-active"] = vrde.active
+    #         stats["vrde-port"] = vrde.port
+    #         stats["vrde-start-time"] = vrde.begin_time
+    #         stats["vrde-bytes-sent"] = vrde.bytes_sent
+    #         stats["vrde-bytes-received"] = vrde.bytes_received
+    #     session.unlock_machine()
+    #     return stats
 
-    def get_vbox_stats(self):
-        stats = {}
-        workshops = [group for group in self.vbox.machine_groups if group.find("Template") > 0]
-        for workshop in workshops:
-            workshop_name = workshop.split("/")[1].split("-")[0]
-            stats[workshop_name] = get_workshop_stats(workshop_name)
-        return stats
+    # def get_unit_stats(self, unit):
+    #     stats = {}
+    #     machines = self.vbox.get_machines_by_groups([unit,])
+    #     for machine in machines:
+    #         stats[machine.name] = get_vm_stats(machine)
+    #     return stats
+
+    # def get_workshop_stats(self, workshop_name):
+    #     stats = {}
+    #     for unit in get_workshop_units(workshop_name):
+    #         unit_name = unit.split("/")[2]
+    #         stats[unit_name] = get_unit_stats(unit)
+    #     return stats
+
+    # def get_vbox_stats(self):
+    #     stats = {}
+    #     workshops = [group for group in self.vbox.machine_groups if group.find("Template") > 0]
+    #     for workshop in workshops:
+    #         workshop_name = workshop.split("/")[1].split("-")[0]
+    #         stats[workshop_name] = get_workshop_stats(workshop_name)
+    #     return stats
 
 

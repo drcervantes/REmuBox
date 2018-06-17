@@ -119,10 +119,10 @@ def insert_workshop(name, desc, min_units, max_units, walkthrough, enabled):
     )
     workshop.save()
 
-def insert_session(ip, sid, name, password, available):
+def insert_session(ip, sid, name, password):
     """ TODO """
     workshop = Workshop.objects(name=name).first()
-    session = Session(workshop=workshop, password=password, available=available)
+    session = Session(workshop=workshop, password=password, available=True)
     server = Server.objects(ip=ip).first()
     server.sessions[sid] = session
     server.save()

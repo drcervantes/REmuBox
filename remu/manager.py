@@ -16,7 +16,10 @@ class Manager():
 
         if server:
             db.insert_server("127.0.0.1", 9000)
-        # self.start_workshop("Route_Hijacking")
+
+        s = self.start_workshop("Route_Hijacking")
+        self.stop_workshop(s)
+
     def __del__(self):
         if self.server:
             db.remove_server("127.0.0.1")
@@ -28,6 +31,8 @@ class Manager():
         and the password associated with the session.
         """
 
+        l.info("Starting a %s workshop", workshop)
+
         # Call load balancer to get server node and possible existing session
         server = self.load_balance(workshop)
         l.info("Load balancer selected: %s", server)
@@ -37,9 +42,9 @@ class Manager():
         l.info("Using session: %s", session_id)
 
         if server == "127.0.0.1":
-            self.start_local_session(workshop, session_id)
+            self._start_local(workshop, session_id)
         else:
-            self.start_remote_session(server, workshop, session_id)
+            self._start_remote(server, workshop, session_id)
 
         vrde_ports = db.get_vrde_ports(server, session_id)
         l.info("Running on ports: %s", repr(vrde_ports))
@@ -60,7 +65,10 @@ class Manager():
         #     )
         #     self.remote.request(url)
 
-        # return session.to_json()     # TODO: Make sure the return is what the view needs
+        return session_id     # TODO: Make sure the return is what the view needs
+
+    def stop_workshop(self, sid):
+        self._stop_local(sid)
 
     @classmethod
     def load_balance(cls, workshop):
@@ -110,13 +118,21 @@ class Manager():
             db.update_session(workshop, session, False)
             return session, password
 
-        session = str(bson.ObjectId())
-        password = remu.util.rand_str(int(config['REMU']['pass_len']))
-        db.insert_session(server, session, workshop, password, False)
+        return self._create_session(server, workshop)
 
+    def _create_session(self, server, workshop):
+        session = self._create_session_id()
+        password = self._create_password()
+        db.insert_session(server, session, workshop, password)
         return session
 
-    def start_local_session(self, workshop, session_id):
+    def _create_session_id(self):
+        return str(bson.ObjectId())
+
+    def _create_password(self):
+        return remu.util.rand_str(int(config['REMU']['pass_len']))
+
+    def _start_local(self, workshop, session_id):
         """ TODO """
         session = db.get_session('127.0.0.1', session_id)
 
@@ -128,7 +144,7 @@ class Manager():
 
         self.server.start(session_id)
 
-    def start_remote_session(self, server, workshop, session_id):
+    def _start_remote(self, server, workshop, session_id):
         """ TODO """
         server_port = db.get_server(server)['port']
 
@@ -145,15 +161,18 @@ class Manager():
         url = self.remote.build_url(server, server_port, "start_unit", session=session_id)
         self.remote.request(url)
 
-    def stop_local_session(self, session_id):
-        l.debug("not ready")
-        self.server.stop_unit(session_id)
+    def _stop_local(self, session_id):
+        l.debug("Stopping session: %s", session_id)
+        self.server.stop(session_id)
         workshop = db.get_workshop_from_session("127.0.0.1", session_id)
         db.remove_session("127.0.0.1", session_id)
 
         if db.session_count_by_workshop("127.0.0.1", workshop['name']) < workshop['min_instances']:
             # Restore machine & Create new session
-            self.server.restore_unit(session_id)
+            new_sid = self._create_session("127.0.0.1", workshop)
+            self.server.restore(session_id, new_sid)
+            for machine in self.server.unit_to_str(new_sid):
+                db.insert_machine('127.0.0.1', new_sid, machine['name'], machine['port'])
         else:
             # Remove machine
             l.debug("not ready")

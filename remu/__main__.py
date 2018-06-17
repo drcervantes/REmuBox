@@ -183,7 +183,9 @@ if args.server:
     modules.append(server)
 
     if args.import_workshops:
-        server.import_templates()
+        from remu.importer import Templates
+        with Templates() as t:
+            t.import_new()
 
 manager = None
 if args.manager:

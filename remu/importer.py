@@ -3,6 +3,7 @@ import os
 import sys
 import logging
 import subprocess
+import virtualbox
 
 from remu.settings import config
 
@@ -11,86 +12,95 @@ l = logging.getLogger('default')
 """
 TODO: vrde port is checked by the machine configuration and not the xml
 """
+class Templates():
+    def __init__(self, alt_config=None):
+        self.path = alt_config or config['REMU']['workshops']
 
-def _parse_config(config_file):
-    tree = et.parse(config_file)
-    root = tree.getroot().find("workshop-settings")
+    def __enter__(self):
+        self.vbox = virtualbox.VirtualBox()
+        return self
 
-    # Create a dictionary of all elements in the root
-    workshop = {child.tag:child.text.strip() for child in root.getchildren() if not bool(child.getchildren())}
+    def __exit__(self, *args):
+        del self.vbox
 
-    # Create a list of dictionaries containing the elements within the vm tag
-    vms = [{child.tag:child.text.strip() for child in vm.getchildren()} for vm in root.findall("vm")]
-    workshop["vms"] = vms
+    def _parse_config(self, config_file):
+        tree = et.parse(config_file)
+        root = tree.getroot().find("workshop-settings")
 
-    return workshop
+        # Create a dictionary of all elements in the root
+        workshop = {child.tag:child.text.strip() for child in root.getchildren() if not bool(child.getchildren())}
 
-def _get_templates(template_dir):
-    workshops = []
+        # Create a list of dictionaries containing the elements within the vm tag
+        vms = [{child.tag:child.text.strip() for child in vm.getchildren()} for vm in root.findall("vm")]
+        workshop["vms"] = vms
 
-    for workshop_dir in os.listdir(template_dir):
-        config_path = os.path.join(template_dir, workshop_dir, "config.xml")
-        workshop = _parse_config(config_path)
+        return workshop
 
-        # Get the full path of the appliance for importing later
-        workshop["appliance"] = os.path.join(os.getcwd(), template_dir, workshop_dir, workshop["appliance"])
-        workshops.append(workshop)
+    def _get_templates(self):
+        workshops = []
 
-    return workshops
+        for workshop_dir in os.listdir(self.path):
+            config_path = os.path.join(self.path, workshop_dir, "config.xml")
+            workshop = self._parse_config(config_path)
 
-def _progress_bar(progress):
-    try:
-        while not progress.completed:
-            print("Completion: %s %%\r" % (str(progress.percent)), end="")
-            sys.stdout.flush()
-            progress.wait_for_completion(config['REMU']['timeout'])
+            # Get the full path of the appliance for importing later
+            workshop["appliance"] = os.path.join(os.getcwd(), self.path, workshop_dir, workshop["appliance"])
+            workshops.append(workshop)
 
-    except KeyboardInterrupt:
-        l.error("Interrupted.")
-        if progress.cancelable:
-            l.error("Cancelling task...")
-            progress.cancel()
+        return workshops
 
-def _import_template(vbox, template):
-    l.debug("Importing template: " + template["name"])
+    def _progress_bar(self, progress):
+        try:
+            while not progress.completed:
+                print("Completion: %s %%\r" % (str(progress.percent)), end="")
+                sys.stdout.flush()
+                progress.wait_for_completion(config['REMU']['timeout'])
 
-    appliance = vbox.create_appliance()
-    appliance.read(template["appliance"])
+        except KeyboardInterrupt:
+            l.error("Interrupted.")
+            if progress.cancelable:
+                l.error("Cancelling task...")
+                progress.cancel()
 
-    progress = appliance.import_machines()
-    _progress_bar(progress)
+    def _import_template(self, template):
+        l.debug("Importing template: " + template["name"])
 
-    for machine_id in appliance.machines:
-        machine = vbox.find_machine(machine_id)
-        l.debug(" ... importing machine: %s", machine.name)
+        appliance = self.vbox.create_appliance()
+        appliance.read(template["appliance"])
 
-        group = "/" + template["name"] + "-Template"
-        output = subprocess.check_output([config['REMU']['vbox_manage'], "modifyvm", machine.name, "--groups", group])
-        session = machine.create_session()
-        progress, dummy = session.machine.take_snapshot(
-            'Original',
-            'Snapshot of the original state of the machine used for creating/restoring cloned units.',
-            False
-        )
-        progress.wait_for_completion()
-        session.unlock_machine()
-    l.debug("%s imported successfully", template["name"])
+        progress = appliance.import_machines()
+        self._progress_bar(progress)
 
-def import_new_templates(vbox, alt_config=None):
-    """
-    Imports all appliances from the templates directory if they are not already imported
-    into VirtualBox.
-    """
-    # Grab templates already imported
-    existing_templates = []
-    group_list = list(vbox.machine_groups)
-    for group in group_list:
-        idx = group.find("-Template")
-        if idx > 0:
-            existing_templates.append(group[1:idx])
+        for machine_id in appliance.machines:
+            machine = self.vbox.find_machine(machine_id)
+            l.debug(" ... importing machine: %s", machine.name)
 
-    path = alt_config or config['REMU']['workshops']
-    templates = [t for t in _get_templates() if t["name"] not in existing_templates]
+            group = "/" + template["name"] + "-Template"
+            dummy = subprocess.check_output([config['REMU']['vbox_manage'], "modifyvm", machine.name, "--groups", group])
+            session = machine.create_session()
+            progress, dummy = session.machine.take_snapshot(
+                'Original',
+                'Snapshot of the original state of the machine used for creating/restoring cloned units.',
+                False
+            )
+            progress.wait_for_completion()
+            session.unlock_machine()
+        l.debug("%s imported successfully", template["name"])
 
-    for t in templates:
-        _import_template(vbox, t)
+    def import_new(self):
+        """
+        Imports all appliances from the templates directory if they are not already imported
+        into VirtualBox.
+        """
+        # Grab templates already imported
+        existing_templates = []
+        group_list = list(self.vbox.machine_groups)
+        for group in group_list:
+            idx = group.find("-Template")
+            if idx > 0:
+                existing_templates.append(group[1:idx])
+
+        templates = [t for t in self._get_templates() if t["name"] not in existing_templates]
+
+        for t in templates:
+            self._import_template(t)

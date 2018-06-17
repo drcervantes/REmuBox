@@ -80,7 +80,7 @@ class WorkshopManager():
                     port = str(self.get_free_port())
                     l.info(" ... vrde port: %s", port)
                 else:
-                    port = "0"
+                    port = "1"
                     l.info(" ... vrde not enabled")
                 session.machine.vrde_server.set_vrde_property('TCP/Ports', port)
 

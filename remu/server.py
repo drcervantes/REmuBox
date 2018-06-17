@@ -25,18 +25,19 @@ class Server():
         del self.manager
 
     def import_templates(self):
-        import_new_templates()
+        import_new_templates(self.vbox)
 
-    def start(self, session, save=False):
-        try:
-            path = self.manager.get_unit(session)
-            self.manager.start_unit(path)
+    def start(self, session):
+        self.manager.start_unit(session)
 
-            if save:
-                self.manager.save_unit(path)
-        except Exception as e:
-            return False
-        return True
+    def stop(self, session):
+        self.manager.stop_unit(session)
+
+    def restore(self, session, new):
+        self.manager.restore_unit(session, new)
+
+    def save(self, session):
+        self.manager.save_unit(session)
 
     def clone(self, workshop, session):
         """Clones a workshop unit and returns a list of ports for all VRDE enabled machines."""

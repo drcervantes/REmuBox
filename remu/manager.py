@@ -167,8 +167,12 @@ class Manager():
         workshop = db.get_workshop_from_session("127.0.0.1", session_id)
         db.remove_session("127.0.0.1", session_id)
 
-        if db.session_count_by_workshop("127.0.0.1", workshop['name']) < workshop['min_instances']:
-            # Restore machine & Create new session
+        # Get the current number of sessions for the workshop
+        instances = db.session_count_by_workshop("127.0.0.1", workshop['name'])
+        l.debug(" ... current # of instances: %d", instances)
+
+        # Ensure the minimum amount of sessions are met
+        if instances < workshop['min_instances']:
             new_sid = self._create_session("127.0.0.1", workshop)
             self.server.restore(session_id, new_sid)
             for machine in self.server.unit_to_str(new_sid):

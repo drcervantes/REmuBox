@@ -160,12 +160,12 @@ logging.config.dictConfig({
 
 l = logging.getLogger('default')
 
-# if args.manager or args.web:
-#     import mongoengine
-#     mongoengine.connect(
-#         config['DATABASE']['name'],
-#         host=config['DATABASE']['ip'],
-#         port=int(config['DATABASE']['port']))
+if args.manager or args.web:
+    import mongoengine
+    mongoengine.connect(
+        config['DATABASE']['name'],
+        host=config['DATABASE']['ip'],
+        port=int(config['DATABASE']['port']))
 
 # Use the arguments to determine which modules to run
 modules = []

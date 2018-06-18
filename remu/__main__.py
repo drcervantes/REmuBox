@@ -165,7 +165,8 @@ if args.manager or args.web:
     mongoengine.connect(
         config['DATABASE']['name'],
         host=config['DATABASE']['ip'],
-        port=int(config['DATABASE']['port']))
+        port=int(config['DATABASE']['port'])
+    )
 
 # Use the arguments to determine which modules to run
 modules = []

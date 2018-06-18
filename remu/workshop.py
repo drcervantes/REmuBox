@@ -17,8 +17,8 @@ When removing the machine, may need to remove snapshot first
 """
 
 class WorkshopManager():
-    def __init__(self, vbox):
-        self.vbox = vbox
+    def __init__(self):
+        self.vbox = virtualbox.VirtualBox()
 
     def set_group(self, machine, group):
         """Set the group for a virtual machine."""

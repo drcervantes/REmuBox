@@ -12,9 +12,10 @@ class Monitor():
     def __init__(self):
         self.recycle = []
 
-    def start():
-        # get active sessions
-        db.get_active_sessions()
+    def start(self):
+        # Get active session
+        active = db.get_active_sessions()
+        
         # check matching unit on server for active vrde connections
         # if no active connections, place in list to recycle
         # if active, make sure session is not in recycle list

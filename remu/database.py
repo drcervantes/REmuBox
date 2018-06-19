@@ -54,10 +54,12 @@ def get_available_session(ip, workshop):
     return None, None
 
 def get_active_sessions():
-    count = 0
-    for s in Server.objects:
-        count += len(s.sessions)
-    return count
+    active = []
+    for server in Server.objects:
+        for session in server.sessions:
+            if not session['available']:
+                active.append(session)
+    return active
 
 def session_count(ip, check_available=False):
     """Returns the current number of sessions. If check_available is true,

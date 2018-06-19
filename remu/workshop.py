@@ -120,6 +120,16 @@ class WorkshopManager():
         """Get all machines in a specific unit."""
         return self.vbox.get_machines_by_groups([unit,])
 
+    def unit_to_str(self, session):
+        path = self.get_unit(session)
+        machines = []
+        for m in self.get_unit_machines(path):
+            machines.append({
+                'name': m.name,
+                'port': m.vrde_server.get_vrde_property('TCP/Ports')
+            })
+        return machines
+
     def start_unit(self, sid):
         unit = self.get_unit(sid)
         l.info("Starting unit: %s", unit)
@@ -226,42 +236,33 @@ class WorkshopManager():
                 l.error("Error deleting machine: %s", machine.name)
 
 
+    '''
+    {'Route_Hijacking': {'WSU_0': {'kali-2016.2-debian_ecel_rh_WSU_0_0': {'state': MachineState(5),
+                                                                          'vrde-active': 0,
+                                                                          'vrde-bytes-received': 0,
+                                                                          'vrde-bytes-sent': 0,
+                                                                          'vrde-enabled': 1,
+                                                                          'vrde-port': 56557,
+                                                                          'vrde-start-time': 0},
+                                   'ubuntu-core4.7_WSU_0_1': {'state': MachineState(5),
+                                                              'vrde-enabled': 0}},
+                         'WSU_1': {'kali-2016.2-debian_ecel_rh_WSU_1_0': {'state': MachineState(5),
+                                                                          'vrde-active': 0,
+                                                                          'vrde-bytes-received': 0,
+                                                                          'vrde-bytes-sent': 0,
+                                                                          'vrde-enabled': 1,
+                                                                          'vrde-port': 56559,
+                                                                          'vrde-start-time': 0},
+                                   'ubuntu-core4.7_WSU_1_1': {'state': MachineState(5),
+                                                              'vrde-enabled': 0}}}}
+    '''
+    # def get_workshop_list(self):
+    #     """Provides a list of all workshop names available on the server node."""
+    #     workshops = []
 
-    # def get_vm_stats(self, machine):
-    #     stats = {}
-    #     session = machine.create_session()
-    #     stats["state"] = machine.state._value
-    #     stats["vrde-enabled"] = session.machine.vrde_server.enabled
-    #     if session.machine.vrde_server.enabled == 1 and machine.state == vboxlib.MachineState.running:
-    #         vrde = session.console.vrde_server_info
-    #         stats["vrde-active"] = vrde.active
-    #         stats["vrde-port"] = vrde.port
-    #         stats["vrde-start-time"] = vrde.begin_time
-    #         stats["vrde-bytes-sent"] = vrde.bytes_sent
-    #         stats["vrde-bytes-received"] = vrde.bytes_received
-    #     session.unlock_machine()
-    #     return stats
+    #     for group in self.manager.vbox.machine_groups:
+    #         idx = group.find("-Template")
+    #         if idx > 0: 
+    #             workshops.append(group[1:idx])
 
-    # def get_unit_stats(self, unit):
-    #     stats = {}
-    #     machines = self.vbox.get_machines_by_groups([unit,])
-    #     for machine in machines:
-    #         stats[machine.name] = get_vm_stats(machine)
-    #     return stats
-
-    # def get_workshop_stats(self, workshop_name):
-    #     stats = {}
-    #     for unit in get_workshop_units(workshop_name):
-    #         unit_name = unit.split("/")[2]
-    #         stats[unit_name] = get_unit_stats(unit)
-    #     return stats
-
-    # def get_vbox_stats(self):
-    #     stats = {}
-    #     workshops = [group for group in self.vbox.machine_groups if group.find("Template") > 0]
-    #     for workshop in workshops:
-    #         workshop_name = workshop.split("/")[1].split("-")[0]
-    #         stats[workshop_name] = get_workshop_stats(workshop_name)
-    #     return stats
-
-
+    #     return json.dumps(workshops)

@@ -2,7 +2,7 @@
 import logging
 l = logging.getLogger('default')
 
-from remu.models import Server, Workshop, Session, User, Machine
+from models import Server, Workshop, Session, User, Machine
 
 def get_workshop(name):
     """Returns the workshop entry corresponding to the workshop name."""
@@ -52,6 +52,12 @@ def get_available_session(ip, workshop):
             if session['available'] and session.workshop['name'] == workshop:
                 return s_id, session['password']
     return None, None
+
+def get_active_sessions():
+    count = 0
+    for s in Server.objects:
+        count += len(s.sessions)
+    return count
 
 def session_count(ip, check_available=False):
     """Returns the current number of sessions. If check_available is true,

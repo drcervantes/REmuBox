@@ -20,17 +20,17 @@ class WorkshopManager():
     def __init__(self):
         self.vbox = virtualbox.VirtualBox()
 
-    def set_group(self, machine, group):
+    def _set_group(self, machine, group):
         """Set the group for a virtual machine."""
         return subprocess.check_output([config['REMU']['vbox_manage'], "modifyvm", machine, "--groups", group])
 
-    def get_first_snapshot(self, machine):
+    def _get_first_snapshot(self, machine):
         if machine.snapshot_count < 1:
             raise Exception("No snapshot found for %s. Unable to clone!" % machine.name)
 
         return machine.find_snapshot("")
 
-    def get_free_port(self):
+    def _get_free_port(self):
         """Briefly opens and closes a socket to obtain an available port through the 
         operating system. 
         """
@@ -38,8 +38,28 @@ class WorkshopManager():
             sock.bind(('', 0))
             return sock.getsockname()[1]
 
-    def clone_vm(self, machine, snapshot_name=None, clone_name=None, group=None):
-        snapshot = self.get_first_snapshot(machine)
+    def _get_all_units_by_workshop(self, workshop_name):
+        group_list = list(self.vbox.machine_groups)
+        units = []
+        for group in group_list:
+            if group.find(workshop_name + "-Units") >= 0:
+                units.append(group)
+        return units
+
+    def _get_unit(self, session):
+        """Get a workshop unit's group path by session id."""
+        groups = list(self.vbox.machine_groups)
+        for g in groups:
+            if g.find(session) >= 0:
+                return g
+        return None
+
+    def _get_unit_machines(self, unit):
+        """Get all machines in a specific unit."""
+        return self.vbox.get_machines_by_groups([unit,])
+
+    def _clone_vm(self, machine, snapshot_name=None, clone_name=None, group=None):
+        snapshot = self._get_first_snapshot(machine)
         if snapshot_name is not None:
             snapshot = machine.find_snapshot(snapshot_name)
 
@@ -60,8 +80,8 @@ class WorkshopManager():
         int_net = rand_str(10)
         unit_path = "/" + workshop + '-Units/' + session_id
 
-        for machine in self.get_unit_machines(template):
-            clone = self.clone_vm(machine, group=[unit_path,])
+        for machine in self._get_unit_machines(template):
+            clone = self._clone_vm(machine, group=[unit_path,])
             
             try:
                 session = clone.create_session(vboxlib.LockType(2))
@@ -77,7 +97,7 @@ class WorkshopManager():
                 l.info(" ... intnet: %s", int_net)     
 
                 if session.machine.vrde_server.enabled:
-                    port = str(self.get_free_port())
+                    port = str(self._get_free_port())
                     l.info(" ... vrde port: %s", port)
                 else:
                     port = "1"
@@ -89,7 +109,7 @@ class WorkshopManager():
                 progress.wait_for_completion()
                 session.unlock_machine()
 
-                self.set_group(clone.name, unit_path)
+                self._set_group(clone.name, unit_path)
                 clones.append(machine)
             except Exception as e:
                 msg = "Error cloning: {}".format(machine.name)
@@ -100,30 +120,10 @@ class WorkshopManager():
 
         return unit_path
 
-    def get_workshop_units(self, workshop_name):
-        group_list = list(self.vbox.machine_groups)
-        units = []
-        for group in group_list:
-            if group.find(workshop_name + "-Units") >= 0:
-                units.append(group)
-        return units
-
-    def get_unit(self, session):
-        """Get a workshop unit's group path by session id."""
-        groups = list(self.vbox.machine_groups)
-        for g in groups:
-            if g.find(session) >= 0:
-                return g
-        return None
-
-    def get_unit_machines(self, unit):
-        """Get all machines in a specific unit."""
-        return self.vbox.get_machines_by_groups([unit,])
-
     def unit_to_str(self, session):
-        path = self.get_unit(session)
+        path = self._get_unit(session)
         machines = []
-        for m in self.get_unit_machines(path):
+        for m in self._get_unit_machines(path):
             machines.append({
                 'name': m.name,
                 'port': m.vrde_server.get_vrde_property('TCP/Ports')
@@ -131,9 +131,9 @@ class WorkshopManager():
         return machines
 
     def start_unit(self, sid):
-        unit = self.get_unit(sid)
+        unit = self._get_unit(sid)
         l.info("Starting unit: %s", unit)
-        for machine in self.get_unit_machines(unit):
+        for machine in self._get_unit_machines(unit):
             if machine.state == vboxlib.MachineState(1) or \
                machine.state == vboxlib.MachineState(2):
                 l.info(" ... starting machine: %s", machine.name)
@@ -149,10 +149,10 @@ class WorkshopManager():
         return True
 
     def save_unit(self, sid):
-        unit = self.get_unit(sid)
+        unit = self._get_unit(sid)
         l.info("Saving unit: %s", unit)
 
-        for machine in self.get_unit_machines(unit):
+        for machine in self._get_unit_machines(unit):
             if machine.state == vboxlib.MachineState(5):
                 l.info(" ... saving machine: %s", machine.name)
                 try:
@@ -169,9 +169,9 @@ class WorkshopManager():
         return True
 
     def stop_unit(self, sid):
-        unit = self.get_unit(sid)
+        unit = self._get_unit(sid)
         l.info("Stopping unit: %s", unit)
-        for machine in self.get_unit_machines(unit):
+        for machine in self._get_unit_machines(unit):
             if machine.state == vboxlib.MachineState(5):
                 l.info(" ... stopping machine: %s", machine.name)
                 try:
@@ -188,15 +188,15 @@ class WorkshopManager():
         return True
 
     def restore_unit(self, sid, new_sid):
-        unit = self.get_unit(sid)
+        unit = self._get_unit(sid)
         l.info("Restoring unit: %s", unit)
-        for machine in self.get_unit_machines(unit):
+        for machine in self._get_unit_machines(unit):
             if machine.state == vboxlib.MachineState(1) or \
                machine.state == vboxlib.MachineState(2):
                 l.info(" ... restoring machine: %s", machine.name)
                 try:
                     # Obtain snapshot of the original state
-                    snapshot = self.get_first_snapshot(machine)
+                    snapshot = self._get_first_snapshot(machine)
 
                     # Restore the machine
                     session = machine.create_session()
@@ -217,7 +217,7 @@ class WorkshopManager():
                     base_end = group.rfind('/') + 1
                     group = group[:base_end] + new_sid
                     l.debug(" ... new group name: %s, group")
-                    self.set_group(machine.name, group)
+                    self._set_group(machine.name, group)
                 except Exception:
                     l.error("Error restoring machine: %s", machine.name)
             else:
@@ -225,7 +225,7 @@ class WorkshopManager():
                 return False
         return True
 
-    def delete_unit(self, unit):
+    def remove_unit(self, unit):
         l.debug("Deleting unit: %s", unit)
         machines = self.vbox.get_machines_by_groups([unit,])
         for machine in machines:
@@ -235,34 +235,35 @@ class WorkshopManager():
             except Exception:
                 l.error("Error deleting machine: %s", machine.name)
 
+    def get_workshop_list(self):
+        """Provides a list of all workshop names available on the server node."""
+        workshops = []
 
-    '''
-    {'Route_Hijacking': {'WSU_0': {'kali-2016.2-debian_ecel_rh_WSU_0_0': {'state': MachineState(5),
-                                                                          'vrde-active': 0,
-                                                                          'vrde-bytes-received': 0,
-                                                                          'vrde-bytes-sent': 0,
-                                                                          'vrde-enabled': 1,
-                                                                          'vrde-port': 56557,
-                                                                          'vrde-start-time': 0},
-                                   'ubuntu-core4.7_WSU_0_1': {'state': MachineState(5),
-                                                              'vrde-enabled': 0}},
-                         'WSU_1': {'kali-2016.2-debian_ecel_rh_WSU_1_0': {'state': MachineState(5),
-                                                                          'vrde-active': 0,
-                                                                          'vrde-bytes-received': 0,
-                                                                          'vrde-bytes-sent': 0,
-                                                                          'vrde-enabled': 1,
-                                                                          'vrde-port': 56559,
-                                                                          'vrde-start-time': 0},
-                                   'ubuntu-core4.7_WSU_1_1': {'state': MachineState(5),
-                                                              'vrde-enabled': 0}}}}
-    '''
-    # def get_workshop_list(self):
-    #     """Provides a list of all workshop names available on the server node."""
-    #     workshops = []
+        for group in self.manager.vbox.machine_groups:
+            idx = group.find("-Template")
+            if idx > 0: 
+                workshops.append(group[1:idx])
 
-    #     for group in self.manager.vbox.machine_groups:
-    #         idx = group.find("-Template")
-    #         if idx > 0: 
-    #             workshops.append(group[1:idx])
+        return workshops
 
-    #     return json.dumps(workshops)
+# class WorkshopManagerRemote():
+#     def __init__(self, ip, port):
+#         self.ip = ip
+#         self.port = port
+
+    def start_unit(self, sid):
+        url = remote.build_url(self.ip, self.port, "start_unit", session=sid)
+        try:
+            r = requests.get(url)
+            r.raise_for_status()
+            return r.text
+        except requests.exceptions.HTTPError:
+            l.exception("")
+        
+
+#         return
+
+    # def save_unit(self, sid)
+    # def stop_unit(self, sid)
+    # def restore_unit(self, sid, new_sid)
+    # def remove_unit(self, sid)

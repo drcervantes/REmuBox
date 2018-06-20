@@ -17,12 +17,15 @@ class Manager():
         if server:
             db.insert_server("127.0.0.1", 9000)
 
-        s = self.start_workshop("Route_Hijacking")
-        self.stop_workshop(s)
+        # s = self.start_workshop("Route_Hijacking")
+        # self.stop_workshop(s)
 
     def __del__(self):
         if self.server:
             db.remove_server("127.0.0.1")
+
+    def maybe(self):
+        return True
 
     def start_workshop(self, workshop):
         """

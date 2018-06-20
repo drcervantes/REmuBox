@@ -55,10 +55,10 @@ def create_app():
 
         l.debug("Received path: %s", url.path)
 
-        method, query = path.split('?')
-        query = ulib.parse_qsl(query)
+        if path.find('?') > 0:
+            method, query = path.split('?')
+            query = ulib.parse_qsl(query)
 
-        if query:
             params = {}
             for k, v in query:
                 try:
@@ -67,7 +67,8 @@ def create_app():
                 except ValueError:
                     args[k] = v
         else:
-            params = query
+            method = path
+            params = None
 
         l.debug("Parsed args: %s", str(params))
 
@@ -75,10 +76,12 @@ def create_app():
         for m in modules:
             function = getattr(m, method)
             if function:
-                result = function(**params)
+                result = function(**params) if params is not None else function()
+                # need to return bad result if function not found
                 break
 
         # We must return a string for the Flask view --- needs to be encrypted??
+        l.debug("Result: %s", str(result))
         return str(result)
 
     return app

@@ -2,7 +2,7 @@
 import logging
 l = logging.getLogger('default')
 
-from models import Server, Workshop, Session, User, Machine
+from remu.models import Server, Workshop, Session, User, Machine
 
 def get_workshop(name):
     """Returns the workshop entry corresponding to the workshop name."""

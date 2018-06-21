@@ -122,6 +122,7 @@ class WorkshopManager():
 
     def unit_to_str(self, session):
         path = self._get_unit(session)
+
         machines = []
         for m in self._get_unit_machines(path):
             machines.append({
@@ -133,6 +134,7 @@ class WorkshopManager():
     def start_unit(self, sid):
         unit = self._get_unit(sid)
         l.info("Starting unit: %s", unit)
+
         for machine in self._get_unit_machines(unit):
             if machine.state == vboxlib.MachineState(1) or \
                machine.state == vboxlib.MachineState(2):
@@ -171,6 +173,7 @@ class WorkshopManager():
     def stop_unit(self, sid):
         unit = self._get_unit(sid)
         l.info("Stopping unit: %s", unit)
+
         for machine in self._get_unit_machines(unit):
             if machine.state == vboxlib.MachineState(5):
                 l.info(" ... stopping machine: %s", machine.name)
@@ -190,6 +193,7 @@ class WorkshopManager():
     def restore_unit(self, sid, new_sid):
         unit = self._get_unit(sid)
         l.info("Restoring unit: %s", unit)
+
         for machine in self._get_unit_machines(unit):
             if machine.state == vboxlib.MachineState(1) or \
                machine.state == vboxlib.MachineState(2):
@@ -219,21 +223,30 @@ class WorkshopManager():
                     l.debug(" ... new group name: %s, group")
                     self._set_group(machine.name, group)
                 except Exception:
-                    l.error("Error restoring machine: %s", machine.name)
+                    l.exception("Error restoring machine: %s", machine.name)
+                    return False
             else:
                 l.error("Error restoring machine: %s. Machine is not powered off or saved.", machine.name)
                 return False
         return True
 
-    def remove_unit(self, unit):
-        l.debug("Deleting unit: %s", unit)
-        machines = self.vbox.get_machines_by_groups([unit,])
-        for machine in machines:
-            l.debug("Deleting machine: %s", machine.name)
-            try:
-                machine.remove()
-            except Exception:
-                l.error("Error deleting machine: %s", machine.name)
+    def remove_unit(self, sid):
+        unit = self._get_unit(sid)
+        l.info("Removing unit: %s", sid)
+
+        for machine in self._get_unit_machines(unit):
+            if machine.state == vboxlib.MachineState(1) or \
+               machine.state == vboxlib.MachineState(2):
+                l.info(" ... removing machine: %s", machine.name)
+                try:
+                    machine.remove()
+                except Exception:
+                    l.exception("Error removing machine: %s", machine.name)
+                    return False
+            else:
+                l.error("Error removing machine: %s. Machine is not powered off or saved.", machine.name)
+                return False
+        return True
 
     def get_workshop_list(self):
         """Provides a list of all workshop names available on the server node."""
@@ -265,3 +278,6 @@ class RemoteWorkshopManager():
 
     def remove_unit(self, sid):
         return request(self.ip, self.port, "remove_unit", sid=sid)
+
+    def unit_to_str(self, sid):
+        return request(self.ip, self.port, "unit_to_str", sid=sid)

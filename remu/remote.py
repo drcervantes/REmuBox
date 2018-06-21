@@ -1,14 +1,17 @@
 """ TODO """
 import logging
 import json
-import threading
 import urllib.parse
-import asyncio
-import aiohttp
 import cryptography.fernet as fernet
+import requests
+
 from remu.settings import config
 
-def build_url(host, port, method, **kwargs):
+l = logging.getLogger(__name__)
+
+fern = fernet.Fernet(config['REMU']['secret_key'].encode())
+
+def _build_url(host, port, method, **kwargs):
     """
     Construct an encrypted url for a remote request.
     """
@@ -25,44 +28,11 @@ def build_url(host, port, method, **kwargs):
     url = url_base + enc_query.decode()
     return url
 
-async def _request_data(url):
-    session = aiohttp.ClientSession()
-    response = await session.get(url=url)
-    content = await response.read()
-    session.close()
-    return content.decode("utf-8")
-
-def request(url, timeout=5):
-    """Sends an http request asychronously so as to not block the manager web service.
-    Used to communicate with the other subsystems.
-
-    Args:
-        url (str): URL string to the web service along with its arguments.
-        timeout (int): Wait interval for the request.
-
-    Returns:
-        A string containing the result from the resulting web service view.
-    """
+def request(host, port, method, **kwargs):
+    url = _build_url(host, port, method, **kwargs)
     try:
-        future = asyncio.run_coroutine_threadsafe(_request_data(url), worker)
-        result = future.result(timeout)
-    except asyncio.TimeoutError:
-        l.debug("Request to %s timed out.", url)
-        future.cancel()
-    except Exception as exc:
-        l.error("The coroutine raised an exception: %s", repr(exc))
-    else:
-        return result
-
-def _start_worker(loop):
-    """Worker routine for asynchronous http requests."""
-    asyncio.set_event_loop(loop)
-    loop.run_forever()
-
-l = logging.getLogger(__name__)
-
-fern = fernet.Fernet(config['REMU']['secret_key'].encode())
-
-"""Create the new loop and worker thread."""
-worker = threading.Thread(target=_start_worker, args=(asyncio.new_event_loop(),))
-worker.start()
+        r = requests.get(url)
+        r.raise_for_status()
+        return r.text
+    except requests.exceptions.HTTPError:
+        l.exception("Error requesting %s from %s:%d", method, host, port)

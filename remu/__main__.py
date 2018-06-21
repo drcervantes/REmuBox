@@ -182,8 +182,8 @@ if args.nginx:
 
 server = None
 if args.server:
-    from remu.server import Server
-    server = Server()
+    from remu.workshop import WorkshopManager
+    server = WorkshopManager()
     modules.append(server)
 
     if args.import_workshops:
@@ -194,8 +194,15 @@ if args.server:
 manager = None
 if args.manager:
     from remu.manager import Manager
+
+    # If NGINX is not running locally, create object to handle remote calls
+    if not args.nginx:
+        from remu.nginx import RemoteNginx
+        nginx = RemoteNginx()
+
     manager = Manager(server, nginx)
     modules.append(manager)
+
 
 # Create our flask application
 application = create_app()

@@ -2,6 +2,7 @@
 import pathlib
 import subprocess
 import remu.util
+from remu.remote import request
 from remu.settings import config
 
 class Nginx():
@@ -19,7 +20,7 @@ class Nginx():
             with open(self.rdp_upstreams, "w"):
                 pass
 
-    def reload(self):
+    def _reload(self):
         """Inform nginx to reload the configuration."""
         result = subprocess.check_output([str(self.path), "-s", "reload"])
         return result
@@ -69,3 +70,14 @@ class Nginx():
         for line in mappings:
             conf.write(line)
         conf.truncate()
+
+class RemoteNginx():
+    def __init__(self):
+        self.ip = config['NGINX']['interface']
+        self.port = config['NGINX']['port']
+
+    def add_mapping(self, sid, server, ports):
+        return request(self.ip, self.port, "add_mapping", session=sid, server=server, ports=ports)
+
+    def remove_mapping(self, sid):
+        return request(self.ip, self.port, "remove_mapping", session=sid)

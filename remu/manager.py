@@ -10,22 +10,25 @@ l = logging.getLogger('default')
 
 class Manager():
     """ TODO """
-    def __init__(self, server=None, nginx=None):
+    def __init__(self, nginx, local_server=None):
         self.nginx = nginx
-        self.server = server
+        self.servers = {}
 
-        if server:
+        if local_server:
             db.insert_server("127.0.0.1", 9000)
+            self.servers["127.0.0.1"] = local_server
 
-        # s = self.start_workshop("Route_Hijacking")
-        # self.stop_workshop(s)
+        # Create WorkshopManager objects for each server
+        servers = db.get_all_servers()
+        for s in servers:
+            self.register_server(s['ip'], s['port'])
 
     def __del__(self):
-        if self.server:
+        if "127.0.0.1" in self.servers:
             db.remove_server("127.0.0.1")
 
-    def maybe(self):
-        return True
+    def register_server(self, ip, port):
+        self.servers[ip] = remu.workshop.RemoteWorkshopManager(ip, port)
 
     def start_workshop(self, workshop):
         """
@@ -44,10 +47,7 @@ class Manager():
         session_id = self.obtain_session(server, workshop)
         l.info("Using session: %s", session_id)
 
-        if server == "127.0.0.1":
-            self._start_local(workshop, session_id)
-        else:
-            self._start_remote(server, workshop, session_id)
+        self._run_workshop(server, workshop, session_id)
 
         vrde_ports = db.get_vrde_ports(server, session_id)
         l.info("Running on ports: %s", repr(vrde_ports))
@@ -68,10 +68,7 @@ class Manager():
         #     )
         #     self.remote.request(url)
 
-        return session_id     # TODO: Make sure the return is what the view needs
-
-    def stop_workshop(self, sid):
-        self._stop_local(sid)
+        return session_id
 
     @classmethod
     def load_balance(cls, workshop):
@@ -129,57 +126,45 @@ class Manager():
         db.insert_session(server, session, workshop, password)
         return session
 
-    def _create_session_id(self):
+    @classmethod
+    def _create_session_id(cls):
         return str(bson.ObjectId())
 
-    def _create_password(self):
+    @classmethod
+    def _create_password(cls):
         return remu.util.rand_str(int(config['REMU']['pass_len']))
 
-    def _start_local(self, workshop, session_id):
+    def _run_workshop(self, ip, workshop, session_id):
         """ TODO """
-        session = db.get_session('127.0.0.1', session_id)
+        server = self.servers[ip]
+        session = db.get_session(ip, session_id)
 
         # Workshop unit doesn't exist yet
         if not session['machines']:
-            self.server.clone(workshop, session_id)
-            for machine in self.server.unit_to_str(session_id):
-                db.insert_machine('127.0.0.1', session_id, machine['name'], machine['port'])
+            server.clone_unit(workshop, session_id)
 
-        self.server.start(session_id)
+            for machine in server.unit_to_str(session_id):
+                db.insert_machine(ip, session_id, machine['name'], machine['port'])
 
-    def _start_remote(self, server, workshop, session_id):
-        """ TODO """
-        server_port = db.get_server(server)['port']
+        server.start(session_id)
 
-        if not session['ports']:
-            url = self.remote.build_url(
-                server,
-                server_port,
-                "clone_unit",
-                workshop=workshop,
-                session=session_id
-            )
-            ports = self.remote.request(url)
-            db.update_session_ports(session_id, server, ports)
-        url = self.remote.build_url(server, server_port, "start_unit", session=session_id)
-        self.remote.request(url)
-
-    def _stop_local(self, session_id):
+    def stop_workshop(self, ip, session_id):
         l.debug("Stopping session: %s", session_id)
-        self.server.stop(session_id)
-        workshop = db.get_workshop_from_session("127.0.0.1", session_id)
-        db.remove_session("127.0.0.1", session_id)
+        server = self.servers[ip]
+        server.stop_unit(session_id)
+        workshop = db.get_workshop_from_session(ip, session_id)
+        db.remove_session(ip, session_id)
 
         # Get the current number of sessions for the workshop
-        instances = db.session_count_by_workshop("127.0.0.1", workshop['name'])
+        instances = db.session_count_by_workshop(ip, workshop['name'])
         l.debug(" ... current # of instances: %d", instances)
 
         # Ensure the minimum amount of sessions are met
         if instances < workshop['min_instances']:
-            new_sid = self._create_session("127.0.0.1", workshop)
-            self.server.restore(session_id, new_sid)
-            for machine in self.server.unit_to_str(new_sid):
-                db.insert_machine('127.0.0.1', new_sid, machine['name'], machine['port'])
+            new_sid = self._create_session(ip, workshop)
+            server[ip].restore(session_id, new_sid)
+            for machine in server.unit_to_str(new_sid):
+                db.insert_machine(ip, new_sid, machine['name'], machine['port'])
         else:
             # Remove machine
             l.debug("not ready")

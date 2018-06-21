@@ -1,20 +1,20 @@
-import logging
-import socket
-import subprocess
-import contextlib
-
-import virtualbox
-import virtualbox.library as vboxlib
-from remu.util import rand_str
-from remu.settings import config
-
-l = logging.getLogger('default')
-
 """
 Notes:
 Restoring needs to be finished
 When removing the machine, may need to remove snapshot first
 """
+import logging
+import socket
+import subprocess
+import contextlib
+import virtualbox
+import virtualbox.library as vboxlib
+
+from remu.remote import request
+from remu.util import rand_str
+from remu.settings import config
+
+l = logging.getLogger('default')
 
 class WorkshopManager():
     def __init__(self):
@@ -239,31 +239,29 @@ class WorkshopManager():
         """Provides a list of all workshop names available on the server node."""
         workshops = []
 
-        for group in self.manager.vbox.machine_groups:
+        for group in self.vbox.machine_groups:
             idx = group.find("-Template")
-            if idx > 0: 
+            if idx > 0:
                 workshops.append(group[1:idx])
 
         return workshops
 
-# class WorkshopManagerRemote():
-#     def __init__(self, ip, port):
-#         self.ip = ip
-#         self.port = port
+class RemoteWorkshopManager():
+    def __init__(self, ip, port):
+        self.ip = ip
+        self.port = port
 
     def start_unit(self, sid):
-        url = remote.build_url(self.ip, self.port, "start_unit", session=sid)
-        try:
-            r = requests.get(url)
-            r.raise_for_status()
-            return r.text
-        except requests.exceptions.HTTPError:
-            l.exception("")
-        
+        return request(self.ip, self.port, "start_unit", sid=sid)
 
-#         return
+    def save_unit(self, sid):
+        return request(self.ip, self.port, "save_unit", sid=sid)
 
-    # def save_unit(self, sid)
-    # def stop_unit(self, sid)
-    # def restore_unit(self, sid, new_sid)
-    # def remove_unit(self, sid)
+    def stop_unit(self, sid):
+        return request(self.ip, self.port, "stop_unit", sid=sid)
+
+    def restore_unit(self, sid, new_sid):
+        return request(self.ip, self.port, "restore_unit", sid=sid, new_sid=new_sid)
+
+    def remove_unit(self, sid):
+        return request(self.ip, self.port, "remove_unit", sid=sid)

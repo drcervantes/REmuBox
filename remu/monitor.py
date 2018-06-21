@@ -47,8 +47,8 @@ class Hardware():
         main.args.disable_system = True
         main.args.disable_wifi = True
 
-        self.stats = GlancesStats(main.config,main.args)
+        self.stats = GlancesStats(main.config, main.args)
 
     def update(self):
         self.stats.update()
-        stats.getAllAsDict()
+        return self.stats.getAllAsDict()

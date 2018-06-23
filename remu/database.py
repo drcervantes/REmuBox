@@ -2,7 +2,7 @@
 import logging
 l = logging.getLogger('default')
 
-from remu.models import Server, Workshop, Session, User, Machine
+from models import Server, Workshop, Session, User, Machine
 
 def get_workshop(name):
     """Returns the workshop entry corresponding to the workshop name."""
@@ -44,7 +44,9 @@ def get_session(ip, sid):
     return server.sessions[sid].to_mongo().to_dict()
 
 def get_available_session(ip, workshop):
-    """Returns the first available session for the specified workshop."""
+    """
+    Returns the first available session for the specified workshop.
+    """
     server = Server.objects(ip=ip).first()
 
     if server.sessions:
@@ -54,16 +56,21 @@ def get_available_session(ip, workshop):
     return None, None
 
 def get_active_sessions():
-    active = []
-    for server in Server.objects:
-        for session in server.sessions:
-            if not session['available']:
-                active.append(session)
+    """
+    Return a dictionary containing all active sessions.
+    """
+    active = {}
+    for server in get_all_servers():
+        for sid, session in server['sessions'].items():
+            if session['available']:
+                active[sid] = session
     return active
 
 def session_count(ip, check_available=False):
-    """Returns the current number of sessions. If check_available is true,
-    it will return the current available sessions only."""
+    """
+    Returns the current number of sessions. If check_available is true,
+    it will return the current available sessions only.
+    """
     server = Server.objects(ip=ip).first()
 
     if not check_available:
@@ -76,7 +83,9 @@ def session_count(ip, check_available=False):
     return count
 
 def session_count_by_workshop(ip, name, check_available=False):
-    """Returns the current number of sessions for the specified workshop."""
+    """
+    Returns the current number of sessions for the specified workshop.
+    """
     server = Server.objects(ip=ip).first()
     count = 0
 

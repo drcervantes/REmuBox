@@ -1,10 +1,14 @@
 """ TODO """
 import logging
+import gevent
 import bson
+import ast
+import time
 
 from remu.settings import config
 import remu.database as db
 import remu.util
+import remu.remote as remote
 
 l = logging.getLogger('default')
 
@@ -149,7 +153,7 @@ class Manager():
         server.start(session_id)
 
     def stop_workshop(self, ip, session_id):
-        l.debug("Stopping session: %s", session_id)
+        l.info("Stopping session: %s", session_id)
         server = self.servers[ip]
         server.stop_unit(session_id)
         workshop = db.get_workshop_from_session(ip, session_id)
@@ -157,7 +161,7 @@ class Manager():
 
         # Get the current number of sessions for the workshop
         instances = db.session_count_by_workshop(ip, workshop['name'])
-        l.debug(" ... current # of instances: %d", instances)
+        l.info(" ... current # of instances: %d", instances)
 
         # Ensure the minimum amount of sessions are met
         if instances < workshop['min_instances']:
@@ -168,3 +172,60 @@ class Manager():
         else:
             # Remove machine
             l.debug("not ready")
+
+    def _status_update(self, ip):
+        if ip == "127.0.0.1":
+            status = self.servers["127.0.0.1"].update()
+
+        else:
+            server = db.get_server(ip)
+
+            # Request an update on the status of the server
+            status = remote.request(ip, server['port'], "server_update")
+
+            # Convert the status data from a string to a dictionary
+            status = ast.literal_eval(status)
+
+            db.update_server_status(status)
+
+            # Request an update on the status of virtualbox
+            status = remote.request(ip, server['port'], "vbox_update")
+
+            # Convert the status data from a string to a dictionary
+            status = ast.literal_eval(status)
+
+            for session in status:
+                db.update_machine_status(ip, session)
+
+
+    def monitor(self):
+        # Sessions to be recycled after the timeout interval
+        recycle = {}
+        delay = config['REMU']['recycle_delay']
+        interval = config['REMU']['polling_interval']
+
+        while True:
+            # Update the status of the system
+            jobs = [gevent.spawn(self._status_update(ip)) for ip in self.servers]
+            gevent.joinall(jobs)
+
+            # Get active sessions
+            active = db.get_active_sessions()
+
+            # Check for active sessions with no active vrde connections
+            for sid, session in active.items():
+                if not any([machine['active'] for machine in session['machines']]):
+                    if sid not in recycle:
+                        recycle[sid] = time.time()
+                else:
+                    if sid in recycle:
+                        del recycle[sid]
+
+            # Check if any sessions have exceeded the delay
+            for sid, stime in recycle.items():
+                now = time.time()
+                if now >= stime + delay:
+                    self.stop_workshop(sid)
+                    del recycle[sid]
+
+            time.sleep(interval)

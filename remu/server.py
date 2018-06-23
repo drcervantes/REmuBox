@@ -7,9 +7,15 @@ import logging
 import socket
 import subprocess
 import contextlib
+import pathlib
 import virtualbox
 import virtualbox.library as vboxlib
 
+# Import for harware monitoring
+from glances.main import GlancesMain
+from glances.stats import GlancesStats
+
+# Local imports
 from remu.remote import request
 from remu.util import rand_str
 from remu.settings import config
@@ -18,6 +24,7 @@ l = logging.getLogger('default')
 
 class WorkshopManager():
     def __init__(self):
+        l.info("Server module started")
         self.vbox = virtualbox.VirtualBox()
 
     def _set_group(self, machine, group):
@@ -66,7 +73,8 @@ class WorkshopManager():
         return machine.clone(snapshot.id_p, name=clone_name, groups=group)
 
     def clone_unit(self, workshop, session_id):
-        """Clones a workshop unit from the corresponding template. Each cloned workshop 
+        """
+        Clones a workshop unit from the corresponding template. Each cloned workshop
         unit will be placed into a group with the following naming scheme <workshop>-Units.
         """
         group_list = list(self.vbox.machine_groups)
@@ -281,3 +289,55 @@ class RemoteWorkshopManager():
 
     def unit_to_str(self, sid):
         return request(self.ip, self.port, "unit_to_str", sid=sid)
+
+class PerformanceMonitor():
+    def __init__(self):
+        # Obtain the performance collector built into virtual box
+        vbox = virtualbox.VirtualBox()
+        self._vms = vbox.performance_collector
+
+        main = GlancesMain()
+
+        # Disable all plugins not being utilized to improve performance
+        main.args.disable_alert = True
+        main.args.disable_amps = True
+        main.args.disable_batpercent = True
+        main.args.disable_cloud = True
+        main.args.disable_core = True
+        main.args.disable_diskio = True
+        main.args.disable_docker = True
+        main.args.disable_folders = True
+        main.args.disable_help = True
+        main.args.disable_irq = True
+        main.args.disable_load = True
+        main.args.disable_processcount = True
+        main.args.disable_processlist = True
+        main.args.disable_psutilversion = True
+        main.args.disable_raid = True
+        main.args.disable_sensors = True
+        main.args.disable_system = True
+        main.args.disable_wifi = True
+
+        stats = GlancesStats(main.config, main.args)
+        stats.update()
+        self._system = stats
+
+        # Get the file path to the location where new virtual machines
+        # will be created by virtualbox
+        base_folder = vbox.compose_machine_filename('dummy', '/', '', '')
+        path = pathlib.Path(base_folder)
+
+        # Obtain the fs plugin output as a dictionary
+        fs_plugin = stats.get_plugin('fs').get_raw()
+
+        # Find which storage device contains the virtual machines
+        idx = 0
+        for device in fs_plugin:
+            if device['mnt_point'] == path.anchor:
+                break
+            idx += 1
+        self.device_idx = idx
+
+    def update(self):
+        self._system.update()
+        return self._system.getAllAsDict()

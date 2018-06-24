@@ -180,21 +180,15 @@ class Manager():
         else:
             server = db.get_server(ip)
 
-            # Request an update on the status of the server
-            status = remote.request(ip, server['port'], "server_update")
+            # Request an update on the status
+            status = remote.request(ip, server['port'], "update")
 
             # Convert the status data from a string to a dictionary
             status = ast.literal_eval(status)
 
             db.update_server_status(status)
 
-            # Request an update on the status of virtualbox
-            status = remote.request(ip, server['port'], "vbox_update")
-
-            # Convert the status data from a string to a dictionary
-            status = ast.literal_eval(status)
-
-            for session in status:
+            for session in status['sessions']:
                 db.update_machine_status(ip, session)
 
 

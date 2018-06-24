@@ -1,6 +1,7 @@
 """
 Notes:
-Restoring needs to be finished
+Start performance collecting when starting a machine
+... setup_metrics needs to be called after machine is running
 When removing the machine, may need to remove snapshot first
 """
 import logging
@@ -11,7 +12,7 @@ import pathlib
 import virtualbox
 import virtualbox.library as vboxlib
 
-# Import for harware monitoring
+# Import for hardware monitoring
 from glances.main import GlancesMain
 from glances.stats import GlancesStats
 
@@ -293,8 +294,9 @@ class RemoteWorkshopManager():
 class PerformanceMonitor():
     def __init__(self):
         # Obtain the performance collector built into virtual box
-        vbox = virtualbox.VirtualBox()
-        self._vms = vbox.performance_collector
+        self._vbox = virtualbox.VirtualBox()
+        self._vms = self._vbox.performance_collector
+        self._vms.setup_metrics(["*"], [], 10, 15)
 
         main = GlancesMain()
 
@@ -307,12 +309,20 @@ class PerformanceMonitor():
         main.args.disable_diskio = True
         main.args.disable_docker = True
         main.args.disable_folders = True
+        main.args.disable_gpu = True
+        main.args.disable_hddtemp = True
         main.args.disable_help = True
+        main.args.disable_ip = True
         main.args.disable_irq = True
         main.args.disable_load = True
+        main.args.disable_memswap = True
+        main.args.disable_network = True
+        main.args.disable_percpu = True
+        main.args.disable_ports = True
         main.args.disable_processcount = True
         main.args.disable_processlist = True
         main.args.disable_psutilversion = True
+        main.args.disable_quicklook = True
         main.args.disable_raid = True
         main.args.disable_sensors = True
         main.args.disable_system = True
@@ -324,7 +334,7 @@ class PerformanceMonitor():
 
         # Get the file path to the location where new virtual machines
         # will be created by virtualbox
-        base_folder = vbox.compose_machine_filename('dummy', '/', '', '')
+        base_folder = self._vbox.compose_machine_filename('dummy', '/', '', '')
         path = pathlib.Path(base_folder)
 
         # Obtain the fs plugin output as a dictionary
@@ -340,4 +350,73 @@ class PerformanceMonitor():
 
     def update(self):
         self._system.update()
-        return self._system.getAllAsDict()
+
+        updates = {}
+
+        # Hard disk memory
+        data = self._system.get_plugin("fs").get_raw()
+        updates["hdd"] = data[self.device_idx]
+
+        # CPU usage
+        data = self._system.get_plugin("cpu").get_raw()
+        updates["cpu"] = data["total"]
+
+        # RAM
+        data = self._system.get_plugin('mem').get_raw()
+        updates["mem"] = data["percent"]
+
+        updates["sessions"] = {}
+        for g in self._vbox.machine_groups:
+            if "Template" not in g:
+                sid = g.split("/")[-1]
+                for m in self._vbox.get_machines_by_groups([g]):
+                    updates["sessions"][sid] = self._get_vm_stats(m)
+
+        return updates
+
+    def _get_vm_stats(self, machine):
+        metrics = self._query_metrics(["*"], [machine])
+
+        if not metrics:
+            return None
+    
+        stats = {
+            "cpu": (100000 - metrics["Guest/CPU/Load/Idle:avg"]["values"][0]) / 1000,
+            "mem_free": metrics["Guest/RAM/Usage/Free:avg"]["values"][0],
+            "mem_total": metrics["Guest/RAM/Usage/Total:avg"]["values"][0]
+        }
+
+        return stats
+
+    def _query_metrics(self, names, objects):
+        """
+        Retrieves collected metric values as well as some auxiliary
+        information. Returns an array of dictionaries, one dictionary per
+        metric. Each dictionary contains the following entries:
+        'name': metric name
+        'object': managed object this metric associated with
+        'unit': unit of measurement
+        'scale': divide 'values' by this number to get float numbers
+        'values': collected data
+        'values_as_string': pre-processed values ready for 'print' statement
+        """
+
+        (values, names_out, objects_out, units, scales, 
+            sequence_numbers, indices, lengths) = self._vms.query_metrics_data(names, objects)
+        out = {}
+        for i in range(0, len(names_out)):
+            scale = int(scales[i])
+            if scale != 1:
+                fmt = '%.2f%s'
+            else:
+                fmt = '%d %s'
+            metric_name = str(names_out[i])
+            out[metric_name] = {
+                'object': str(objects_out[i]),
+                'unit': str(units[i]),
+                'scale': scale,
+                'values': [int(values[j]) for j in range(int(indices[i]), int(indices[i]) + int(lengths[i]))],
+                'values_as_string': '[' + ', '.join([fmt % (int(values[j]) / scale, units[i]) for j in
+                                                     range(int(indices[i]), int(indices[i]) + int(lengths[i]))]) + ']'
+            }
+        return out

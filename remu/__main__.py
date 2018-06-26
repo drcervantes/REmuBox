@@ -69,9 +69,9 @@ def create_app():
             for k, v in query:
                 try:
                     e = ast.literal_eval(v)
-                    args[k] = e
+                    params[k] = e
                 except ValueError:
-                    args[k] = v
+                    params[k] = v
         else:
             method = path
             params = None

@@ -38,12 +38,15 @@ class Manager():
     def test(self):
         time.sleep(10)
         self.start_workshop('Route_Hijacking')
+        self.start_workshop('Route_Hijacking')
 
     def clean_up(self):
         l.info(" ... Manager cleaning up")
 
         if "127.0.0.1" in self.servers:
             db.remove_server("127.0.0.1")
+
+        # TODO: remove session entries from all remote servers
 
         self.monitor_thread.kill()
 
@@ -138,7 +141,7 @@ class Manager():
         """Obtain a session for the specified workshop."""
         session, password = db.get_available_session(server, workshop)
         if session is not None:
-            db.update_session(workshop, session, False)
+            db.update_session(server, session, False)
             return session, password
 
         return self._create_session(server, workshop)

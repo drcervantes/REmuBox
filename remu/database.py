@@ -2,7 +2,7 @@
 import logging
 l = logging.getLogger('default')
 
-from models import Server, Workshop, Session, User, Machine
+from remu.models import Server, Workshop, Session, User, Machine
 
 def get_workshop(name):
     """Returns the workshop entry corresponding to the workshop name."""
@@ -13,6 +13,12 @@ def get_workshop_from_session(ip, sid):
     server = Server.objects(ip=ip).first()
     session = server.sessions[sid]
     return session.workshop.to_mongo().to_dict()
+
+def get_server_from_session(sid):
+    for server in Server.objects():
+        if sid in server.sessions:
+            return server.to_mongo().to_dict()
+    return None
 
 def get_all_workshops():
     """Returns all workshop entries as a list of dictionaries unless json is True."""
@@ -114,6 +120,19 @@ def update_session_ports(ip, session_id, ports):
     server.sessions[session_id]['ports'] = ports
     server.save()
 
+def update_server_status(ip, **kwargs):
+    server = Server.objects(ip=ip).first()
+    for k, v in kwargs.items():
+        server[k] = v
+    server.save()
+
+def update_machine_status(ip, session_id, **kwargs):
+    server = Server.objects(ip=ip).first()
+    for m in server.sessions[session_id].machines:
+        for k, v in kwargs.items():
+            m[k] = v
+    server.save()
+
 def insert_server(ip, port):
     """Insert a new server document."""
     try:
@@ -147,7 +166,7 @@ def insert_session(ip, sid, name, password):
 def insert_machine(ip, sid, name, port):
     server = Server.objects(ip=ip).first()
     session = server.sessions[sid]
-    session.machines.append(Machine(name=name, port=port))
+    session.machines.append(Machine(name=name, port=port, active=True))
     session.save()
 
 def remove_session(ip, session_id):
@@ -162,6 +181,6 @@ def remove_server(ip):
         server = Server.objects(ip=ip).first()
         server.delete()
         return True
-    except Exception as exc:
-        # log.exception(str(e))
+    except Exception:
+        l.exception("Couldn't remove server entry")
         return False

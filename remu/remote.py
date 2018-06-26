@@ -9,30 +9,44 @@ from remu.settings import config
 
 l = logging.getLogger(__name__)
 
-fern = fernet.Fernet(config['REMU']['secret_key'].encode())
+class RemoteComponent():
+    def __init__(self, ip, port, modules):
+        self.ip = ip
+        self.port = port
+        self.modules = modules
 
-def _build_url(host, port, method, **kwargs):
-    """
-    Construct an encrypted url for a remote request.
-    """
-    global fern
-    url_base = "http://{}:{}/".format(host, port)
-    query = "{}?".format(method)
+        self.fern = fernet.Fernet(config['REMU']['secret_key'].encode())
 
-    for arg, val in kwargs.items():
-        param = json.dumps(val)
-        param = urllib.parse.quote_plus(param)
-        query += arg + "=" + param + "&"
+    def __getattr__(self, name):
+        def get(self, **kwargs):
+            if getattr(self.modules, name):
+                return self._request(name, **kwargs)
+        return get.__get__(self)
 
-    enc_query = fern.encrypt(query[:-1].encode())
-    url = url_base + enc_query.decode()
-    return url
+    def _build_url(self, method, **kwargs):
+        """
+        Construct an encrypted url for a remote request.
+        """
+        url_base = "http://{}:{}/".format(self.ip, self.port)
+        query = "{}?".format(method)
 
-def request(host, port, method, **kwargs):
-    url = _build_url(host, port, method, **kwargs)
-    try:
-        r = requests.get(url)
-        r.raise_for_status()
-        return r.text
-    except requests.exceptions.HTTPError:
-        l.exception("Error requesting %s from %s:%d", method, host, port)
+        for arg, val in kwargs.items():
+            param = json.dumps(val)
+            param = urllib.parse.quote_plus(param)
+            query += "{}={}&".format(arg, param)
+
+        l.debug("URL prior to encryption: %s%s", url_base, query[:-1])
+        enc_query = self.fern.encrypt(query[:-1].encode())
+        url = url_base + enc_query.decode()
+        return url
+
+    def _request(self, method, **kwargs):
+        url = self._build_url(method, **kwargs)
+        try:
+            r = requests.get(url)
+            r.raise_for_status()
+            return r.text
+        except requests.exceptions.ConnectionError:
+            l.exception("Error could not connect to %s:%d", self.ip, self.port)
+        except requests.exceptions.HTTPError:
+            l.exception("Error requesting %s from %s:%d", method, self.ip, self.port)

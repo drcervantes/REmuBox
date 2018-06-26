@@ -8,14 +8,18 @@ import time
 from remu.settings import config
 import remu.database as db
 import remu.util
-import remu.remote as remote
+import remu.remote
+import remu.server
 
 l = logging.getLogger('default')
 
 class Manager():
     """ TODO """
-    def __init__(self, nginx, local_server=None):
+    def __init__(self, local_server, nginx, local_monitor):
+        l.info("Manager module starting...")
+
         self.nginx = nginx
+        self.pm = local_monitor
         self.servers = {}
 
         if local_server:
@@ -25,14 +29,27 @@ class Manager():
         # Create WorkshopManager objects for each server
         servers = db.get_all_servers()
         for s in servers:
-            self.register_server(s['ip'], s['port'])
+            if s["ip"] != "127.0.0.1":
+                self.register_remote_server(s["ip"], s["port"])
 
-    def __del__(self):
+        self.monitor_thread = gevent.spawn(self.monitor_service)
+        gevent.spawn(self.test)
+
+    def test(self):
+        time.sleep(10)
+        self.start_workshop('Route_Hijacking')
+
+    def clean_up(self):
+        l.info(" ... Manager cleaning up")
+
         if "127.0.0.1" in self.servers:
             db.remove_server("127.0.0.1")
 
-    def register_server(self, ip, port):
-        self.servers[ip] = remu.workshop.RemoteWorkshopManager(ip, port)
+        self.monitor_thread.kill()
+
+    def register_remote_server(self, ip, port):
+        modules = [remu.server.WorkshopManager, remu.server.PerformanceMonitor]
+        self.servers[ip] = remu.remote.RemoteComponent(ip, port, modules)
 
     def start_workshop(self, workshop):
         """
@@ -54,7 +71,6 @@ class Manager():
         self._run_workshop(server, workshop, session_id)
 
         vrde_ports = db.get_vrde_ports(server, session_id)
-        l.info("Running on ports: %s", repr(vrde_ports))
 
         # Add entries to NGINX
         # if self.nginx:
@@ -150,10 +166,14 @@ class Manager():
             for machine in server.unit_to_str(session_id):
                 db.insert_machine(ip, session_id, machine['name'], machine['port'])
 
-        server.start(session_id)
+        server.start_unit(session_id)
 
-    def stop_workshop(self, ip, session_id):
+    def stop_workshop(self, session_id):
         l.info("Stopping session: %s", session_id)
+
+        server_data = db.get_server_from_session(session_id)
+        ip = server_data['ip']
+
         server = self.servers[ip]
         server.stop_unit(session_id)
         workshop = db.get_workshop_from_session(ip, session_id)
@@ -166,7 +186,7 @@ class Manager():
         # Ensure the minimum amount of sessions are met
         if instances < workshop['min_instances']:
             new_sid = self._create_session(ip, workshop)
-            server[ip].restore(session_id, new_sid)
+            server.restore_unit(session_id, new_sid)
             for machine in server.unit_to_str(new_sid):
                 db.insert_machine(ip, new_sid, machine['name'], machine['port'])
         else:
@@ -174,31 +194,30 @@ class Manager():
             l.debug("not ready")
 
     def _status_update(self, ip):
-        if ip == "127.0.0.1":
-            status = self.servers["127.0.0.1"].update()
+        if self.pm:
+            status = self.pm.update()
 
         else:
-            server = db.get_server(ip)
-
-            # Request an update on the status
-            status = remote.request(ip, server['port'], "update")
+            status = self.servers[ip].update()
 
             # Convert the status data from a string to a dictionary
             status = ast.literal_eval(status)
 
-            db.update_server_status(status)
+        db.update_server_status(ip, cpu=status["cpu"], mem=status["mem"], hdd=status["hdd"])
 
-            for session in status['sessions']:
-                db.update_machine_status(ip, session)
+        for sid in status['sessions']:
+            for m in status['sessions'][sid]:
+                if "vrde-active" in m:
+                    db.update_machine_status(ip, sid, active=m["vrde-active"])
 
-
-    def monitor(self):
+    def monitor_service(self):
         # Sessions to be recycled after the timeout interval
         recycle = {}
-        delay = config['REMU']['recycle_delay']
-        interval = config['REMU']['polling_interval']
+        delay = int(config['REMU']['recycle_delay'])
+        interval = int(config['REMU']['polling_interval'])
 
         while True:
+            l.info("Sessions up for recycling: %s", str(recycle))
             # Update the status of the system
             jobs = [gevent.spawn(self._status_update(ip)) for ip in self.servers]
             gevent.joinall(jobs)
@@ -206,20 +225,22 @@ class Manager():
             # Get active sessions
             active = db.get_active_sessions()
 
-            # Check for active sessions with no active vrde connections
-            for sid, session in active.items():
-                if not any([machine['active'] for machine in session['machines']]):
-                    if sid not in recycle:
-                        recycle[sid] = time.time()
-                else:
-                    if sid in recycle:
-                        del recycle[sid]
+            if active:
+                # Check for active sessions with no active vrde connections
+                for sid, session in active.items():
+                    if not any([machine['active'] for machine in session['machines']]):
+                        if sid not in recycle:
+                            recycle[sid] = time.time()
+                    else:
+                        if sid in recycle:
+                            del recycle[sid]
 
             # Check if any sessions have exceeded the delay
-            for sid, stime in recycle.items():
-                now = time.time()
-                if now >= stime + delay:
-                    self.stop_workshop(sid)
-                    del recycle[sid]
+            if recycle:
+                for sid, stime in recycle.copy().items():
+                    now = time.time()
+                    if now >= stime + delay:
+                        self.stop_workshop(sid)
+                        del recycle[sid]
 
             time.sleep(interval)

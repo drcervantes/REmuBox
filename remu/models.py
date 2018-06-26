@@ -1,6 +1,6 @@
 from mongoengine import (
     Document, StringField, BooleanField, IntField, ListField, MapField,
-    EmbeddedDocument, EmbeddedDocumentField, ReferenceField
+    EmbeddedDocument, EmbeddedDocumentField, ReferenceField, FloatField
     )
 from flask_login import UserMixin
 
@@ -32,6 +32,9 @@ class Server(Document):
     ip = StringField(unique=True)
     port = IntField()
     sessions = MapField(EmbeddedDocumentField(Session))
+    cpu = FloatField()
+    hdd = FloatField()
+    mem = FloatField()
 
 class User(UserMixin, Document):
     name = StringField()

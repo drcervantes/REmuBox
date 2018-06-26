@@ -11,13 +11,8 @@ import contextlib
 import pathlib
 import virtualbox
 import virtualbox.library as vboxlib
+import psutil
 
-# Import for hardware monitoring
-from glances.main import GlancesMain
-from glances.stats import GlancesStats
-
-# Local imports
-from remu.remote import request
 from remu.util import rand_str
 from remu.settings import config
 
@@ -25,8 +20,12 @@ l = logging.getLogger('default')
 
 class WorkshopManager():
     def __init__(self):
-        l.info("Server module started")
+        l.info("WorkshopManager module starting...")
         self.vbox = virtualbox.VirtualBox()
+
+    def clean_up(self):
+        l.info(" ... WorkshopManager cleaning up")
+        del self.vbox
 
     def _set_group(self, machine, group):
         """Set the group for a virtual machine."""
@@ -202,6 +201,7 @@ class WorkshopManager():
     def restore_unit(self, sid, new_sid):
         unit = self._get_unit(sid)
         l.info("Restoring unit: %s", unit)
+        l.info(" ... new session id: %s", new_sid)
 
         for machine in self._get_unit_machines(unit):
             if machine.state == vboxlib.MachineState(1) or \
@@ -229,7 +229,7 @@ class WorkshopManager():
                     group = machine.groups[0]
                     base_end = group.rfind('/') + 1
                     group = group[:base_end] + new_sid
-                    l.debug(" ... new group name: %s, group")
+                    l.debug(" ... new group name: %s", group)
                     self._set_group(machine.name, group)
                 except Exception:
                     l.exception("Error restoring machine: %s", machine.name)
@@ -268,123 +268,86 @@ class WorkshopManager():
 
         return workshops
 
-class RemoteWorkshopManager():
-    def __init__(self, ip, port):
-        self.ip = ip
-        self.port = port
-
-    def start_unit(self, sid):
-        return request(self.ip, self.port, "start_unit", sid=sid)
-
-    def save_unit(self, sid):
-        return request(self.ip, self.port, "save_unit", sid=sid)
-
-    def stop_unit(self, sid):
-        return request(self.ip, self.port, "stop_unit", sid=sid)
-
-    def restore_unit(self, sid, new_sid):
-        return request(self.ip, self.port, "restore_unit", sid=sid, new_sid=new_sid)
-
-    def remove_unit(self, sid):
-        return request(self.ip, self.port, "remove_unit", sid=sid)
-
-    def unit_to_str(self, sid):
-        return request(self.ip, self.port, "unit_to_str", sid=sid)
 
 class PerformanceMonitor():
     def __init__(self):
+        l.info("PerformanceMonitor module starting...")
+
         # Obtain the performance collector built into virtual box
         self._vbox = virtualbox.VirtualBox()
         self._vms = self._vbox.performance_collector
         self._vms.setup_metrics(["*"], [], 10, 15)
-
-        main = GlancesMain()
-
-        # Disable all plugins not being utilized to improve performance
-        main.args.disable_alert = True
-        main.args.disable_amps = True
-        main.args.disable_batpercent = True
-        main.args.disable_cloud = True
-        main.args.disable_core = True
-        main.args.disable_diskio = True
-        main.args.disable_docker = True
-        main.args.disable_folders = True
-        main.args.disable_gpu = True
-        main.args.disable_hddtemp = True
-        main.args.disable_help = True
-        main.args.disable_ip = True
-        main.args.disable_irq = True
-        main.args.disable_load = True
-        main.args.disable_memswap = True
-        main.args.disable_network = True
-        main.args.disable_percpu = True
-        main.args.disable_ports = True
-        main.args.disable_processcount = True
-        main.args.disable_processlist = True
-        main.args.disable_psutilversion = True
-        main.args.disable_quicklook = True
-        main.args.disable_raid = True
-        main.args.disable_sensors = True
-        main.args.disable_system = True
-        main.args.disable_wifi = True
-
-        stats = GlancesStats(main.config, main.args)
-        stats.update()
-        self._system = stats
 
         # Get the file path to the location where new virtual machines
         # will be created by virtualbox
         base_folder = self._vbox.compose_machine_filename('dummy', '/', '', '')
         path = pathlib.Path(base_folder)
 
-        # Obtain the fs plugin output as a dictionary
-        fs_plugin = stats.get_plugin('fs').get_raw()
+        # Obtain physical devices
+        try:
+            mounts = psutil.disk_partitions(all=False)
+        except UnicodeDecodeError:
+            l.exception("Unable to determine the physical devices of the machine.")
 
         # Find which storage device contains the virtual machines
-        idx = 0
-        for device in fs_plugin:
-            if device['mnt_point'] == path.anchor:
+        for m in mounts:
+            if m.mountpoint == path.anchor:
+                self.mount = m.mountpoint
+                l.debug("Mount containing VMs: %s", self.mount)
                 break
-            idx += 1
-        self.device_idx = idx
+
+    def clean_up(self):
+        l.info(" ... PerformanceMonitor cleaning up")
+        del self._vbox
 
     def update(self):
-        self._system.update()
-
         updates = {}
 
         # Hard disk memory
-        data = self._system.get_plugin("fs").get_raw()
-        updates["hdd"] = data[self.device_idx]
+        usage = psutil.disk_usage(self.mount)
+        updates["hdd"] = usage.percent
 
         # CPU usage
-        data = self._system.get_plugin("cpu").get_raw()
-        updates["cpu"] = data["total"]
+        updates["cpu"] = psutil.cpu_percent()
 
         # RAM
-        data = self._system.get_plugin('mem').get_raw()
-        updates["mem"] = data["percent"]
+        updates["mem"] = psutil.virtual_memory().percent
 
         updates["sessions"] = {}
         for g in self._vbox.machine_groups:
             if "Template" not in g:
                 sid = g.split("/")[-1]
+                updates["sessions"][sid] = []
                 for m in self._vbox.get_machines_by_groups([g]):
-                    updates["sessions"][sid] = self._get_vm_stats(m)
+                    updates["sessions"][sid].append(self._get_vm_stats(m))
 
         return updates
 
     def _get_vm_stats(self, machine):
+        stats = {}
+
+        session = machine.create_session()
+        stats["state"] = machine.state._value
+        stats["vrde-enabled"] = session.machine.vrde_server.enabled
+
+        # VRDE must be enabled and the machine must be running
+        if session.machine.vrde_server.enabled == 1 and machine.state == vboxlib.MachineState(5):
+            vrde = session.console.vrde_server_info
+            stats["vrde-active"] = bool(vrde.active)
+        session.unlock_machine()
+
+        """
         metrics = self._query_metrics(["*"], [machine])
 
         if not metrics:
             return None
-    
+
         stats = {
             "cpu": (100000 - metrics["Guest/CPU/Load/Idle:avg"]["values"][0]) / 1000,
             "mem_free": metrics["Guest/RAM/Usage/Free:avg"]["values"][0],
             "mem_total": metrics["Guest/RAM/Usage/Total:avg"]["values"][0]
         }
+        """
 
         return stats
 

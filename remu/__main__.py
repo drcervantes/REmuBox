@@ -18,6 +18,12 @@ import ast
 import flask_login
 
 import remu.database as db
+from remu.nginx import Nginx
+from remu.manager import Manager
+from remu.server import WorkshopManager, PerformanceMonitor
+from remu.remote import RemoteComponent
+from remu.importer import Templates
+from remu.interface import bp
 from remu.settings import config
 
 def create_app():
@@ -167,7 +173,7 @@ if args.manager or args.web:
     import mongoengine
     mongoengine.connect(
         config['DATABASE']['name'],
-        host=config['DATABASE']['ip'],
+        host=config['DATABASE']['address'],
         port=int(config['DATABASE']['port'])
     )
 
@@ -175,32 +181,30 @@ if args.manager or args.web:
 modules = []
 
 nginx = None
-if args.nginx:
-    from remu.nginx import Nginx
+if args.nginx: 
     nginx = Nginx()
     modules.append(nginx)
 
 server = None
+monitor = None
 if args.server:
-    from remu.workshop import WorkshopManager
     server = WorkshopManager()
     modules.append(server)
 
+    monitor = PerformanceMonitor()
+    modules.append(monitor)
+
     if args.import_workshops:
-        from remu.importer import Templates
         with Templates() as t:
             t.import_new()
 
 manager = None
 if args.manager:
-    from remu.manager import Manager
-
     # If NGINX is not running locally, create object to handle remote calls
     if not args.nginx:
-        from remu.nginx import RemoteNginx
-        nginx = RemoteNginx()
+        nginx = RemoteComponent(config['NGINX']['address'], config['NGINX']['port'], Nginx)
 
-    manager = Manager(server, nginx)
+    manager = Manager(server, nginx, monitor)
     modules.append(manager)
 
 
@@ -208,11 +212,12 @@ if args.manager:
 application = create_app()
 
 if args.web:
-    from remu.interface import bp
     application.register_blueprint(bp, url_prefix='/admin')
 
 try:
-    l.info("Starting service. Use Ctrl-C to terminate gracefully.")
+    l.info("+--------------------------------------------------+")
+    l.info("Service running. Use Ctrl-C to terminate gracefully.")
+    l.info("+--------------------------------------------------+")
     service = wsgi.WSGIServer((config['REMU']['interface'], int(config['REMU']['port'])), application)
     service.serve_forever()
 except (KeyboardInterrupt, SystemExit):
@@ -222,4 +227,4 @@ except (KeyboardInterrupt, SystemExit):
         service.close()
 
     for module in modules:
-        del module
+        module.clean_up()

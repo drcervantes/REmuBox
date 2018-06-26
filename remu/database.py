@@ -128,10 +128,12 @@ def update_server_status(ip, **kwargs):
 
 def update_machine_status(ip, session_id, **kwargs):
     server = Server.objects(ip=ip).first()
-    for m in server.sessions[session_id].machines:
-        for k, v in kwargs.items():
-            m[k] = v
-    server.save()
+    machines = server.sessions[session_id].machines
+    if machines:
+        for m in machines:
+            for k, v in kwargs.items():
+                m[k] = v
+        server.save()
 
 def insert_server(ip, port):
     """Insert a new server document."""

@@ -21,8 +21,11 @@ class RemoteComponent():
     def __getattr__(self, name):
         def get(self, **kwargs):
             for m in self.modules:
-                if getattr(m, name):
-                    return self._request(name, **kwargs)
+                try:
+                    if getattr(m, name):
+                        return self._request(name, **kwargs)
+                except AttributeError:
+                    pass
         return get.__get__(self)
 
     def _build_url(self, method, **kwargs):

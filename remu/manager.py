@@ -199,17 +199,19 @@ class Manager():
             server.remove_unit(sid=session_id)
 
     def _status_update(self, ip):
-        if self.pm:
+        l.debug("Getting status update for %s", ip)
+
+        if ip == "127.0.0.1":
             status = self.pm.update()
         else:
             status = self.servers[ip].update()
 
         db.update_server_status(ip, cpu=status["cpu"], mem=status["mem"], hdd=status["hdd"])
+        l.debug(" ... update: %s", str(status))
 
         for sid in status['sessions']:
-            for m in status['sessions'][sid]:
-                if "vrde-active" in m:
-                    db.update_machine_status(ip, sid, active=m["vrde-active"])
+            for machine in status['sessions'][sid]:
+                db.update_machine_status(ip, sid, active=machine["vrde-active"])
 
     def monitor_service(self):
         # Sessions to be recycled after the timeout interval

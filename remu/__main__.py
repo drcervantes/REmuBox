@@ -80,11 +80,13 @@ def create_app():
 
         result = ""
         for m in modules:
-            function = getattr(m, method)
-            if function:
-                result = function(**params) if params is not None else function()
-                # need to return bad result if function not found
-                break
+            try:
+                function = getattr(m, method)
+                if function:
+                    result = function(**params) if params is not None else function()
+                    break
+            except AttributeError:
+                pass
 
         # We must return a string for the Flask view --- needs to be encrypted??
         l.debug("Result: %s", str(result))

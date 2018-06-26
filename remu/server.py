@@ -330,12 +330,15 @@ class PerformanceMonitor():
 
         session = machine.create_session()
         stats["state"] = machine.state._value
-        stats["vrde-enabled"] = session.machine.vrde_server.enabled
+        stats["vrde-enabled"] = bool(session.machine.vrde_server.enabled)
 
         # VRDE must be enabled and the machine must be running
         if session.machine.vrde_server.enabled == 1 and machine.state == vboxlib.MachineState(5):
             vrde = session.console.vrde_server_info
             stats["vrde-active"] = bool(vrde.active)
+        else:
+            stats["vrde-active"] = False
+            
         session.unlock_machine()
 
         """

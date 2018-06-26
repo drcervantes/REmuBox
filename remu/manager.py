@@ -139,10 +139,10 @@ class Manager():
 
     def obtain_session(self, server, workshop):
         """Obtain a session for the specified workshop."""
-        session, password = db.get_available_session(server, workshop)
+        session = db.get_available_session(server, workshop)
         if session is not None:
             db.update_session(server, session, False)
-            return session, password
+            return session
 
         return self._create_session(server, workshop)
 

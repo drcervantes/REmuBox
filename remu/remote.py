@@ -4,6 +4,7 @@ import json
 import urllib.parse
 import cryptography.fernet as fernet
 import requests
+import ast
 
 from remu.settings import config
 
@@ -46,7 +47,7 @@ class RemoteComponent():
         try:
             r = requests.get(url)
             r.raise_for_status()
-            return r.text
+            return ast.literal_eval(r.text)
         except requests.exceptions.ConnectionError:
             l.exception("Error could not connect to %s:%d", self.ip, self.port)
         except requests.exceptions.HTTPError:

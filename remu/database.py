@@ -58,8 +58,8 @@ def get_available_session(ip, workshop):
     if server.sessions:
         for s_id, session in server.sessions.items():
             if session['available'] and session.workshop['name'] == workshop:
-                return s_id, session['password']
-    return None, None
+                return s_id
+    return None
 
 def get_active_sessions():
     """

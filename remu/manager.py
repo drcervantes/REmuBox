@@ -140,11 +140,10 @@ class Manager():
     def obtain_session(self, server, workshop):
         """Obtain a session for the specified workshop."""
         session = db.get_available_session(server, workshop)
-        if session is not None:
-            db.update_session(server, session, False)
-            return session
-
-        return self._create_session(server, workshop)
+        if session is None:
+            session = self._create_session(server, workshop)
+        db.update_session(server, session, False)
+        return session
 
     def _create_session(self, server, workshop):
         session = self._create_session_id()
@@ -202,12 +201,8 @@ class Manager():
     def _status_update(self, ip):
         if self.pm:
             status = self.pm.update()
-
         else:
             status = self.servers[ip].update()
-
-            # Convert the status data from a string to a dictionary
-            status = ast.literal_eval(status)
 
         db.update_server_status(ip, cpu=status["cpu"], mem=status["mem"], hdd=status["hdd"])
 

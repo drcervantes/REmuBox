@@ -248,6 +248,8 @@ class WorkshopManager():
                machine.state == vboxlib.MachineState(2):
                 l.info(" ... removing machine: %s", machine.name)
                 try:
+                    snapshot = self._get_first_snapshot(machine)
+                    machine.delete_snapshot(snapshot.id_p)
                     machine.remove()
                 except Exception:
                     l.exception("Error removing machine: %s", machine.name)

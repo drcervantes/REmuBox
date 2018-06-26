@@ -128,8 +128,8 @@ class WorkshopManager():
 
         return unit_path
 
-    def unit_to_str(self, session):
-        path = self._get_unit(session)
+    def unit_to_str(self, sid):
+        path = self._get_unit(sid)
 
         machines = []
         for m in self._get_unit_machines(path):

@@ -62,6 +62,9 @@ class Manager():
 
         # Call load balancer to get server node and possible existing session
         server = self.load_balance(workshop)
+        if not server:
+            l.info(" ... no suitable server found!")
+            return None
         l.info("Load balancer selected: %s", server)
 
         # Get the session
@@ -161,12 +164,12 @@ class Manager():
 
         # Workshop unit doesn't exist yet
         if not session['machines']:
-            server.clone_unit(workshop, session_id)
+            server.clone_unit(workshop=workshop, session_id=session_id)
 
-            for machine in server.unit_to_str(session_id):
+            for machine in server.unit_to_str(sid=session_id):
                 db.insert_machine(ip, session_id, machine['name'], machine['port'])
 
-        server.start_unit(session_id)
+        server.start_unit(sid=session_id)
 
     def stop_workshop(self, session_id):
         l.info("Stopping session: %s", session_id)
@@ -175,23 +178,23 @@ class Manager():
         ip = server_data['ip']
 
         server = self.servers[ip]
-        server.stop_unit(session_id)
+        server.stop_unit(sid=session_id)
         workshop = db.get_workshop_from_session(ip, session_id)
         db.remove_session(ip, session_id)
 
         # Get the current number of sessions for the workshop
         instances = db.session_count_by_workshop(ip, workshop['name'])
-        l.info(" ... current # of instances: %d", instances)
+        l.info(" Current # of instances for %s: %d", workshop['name'], instances)
 
         # Ensure the minimum amount of sessions are met
         if instances < workshop['min_instances']:
             new_sid = self._create_session(ip, workshop)
-            server.restore_unit(session_id, new_sid)
+            server.restore_unit(sid=session_id, new_sid=new_sid)
             for machine in server.unit_to_str(new_sid):
                 db.insert_machine(ip, new_sid, machine['name'], machine['port'])
         else:
             # Remove machine
-            l.debug("not ready")
+            server.remove_unit(sid=session_id)
 
     def _status_update(self, ip):
         if self.pm:

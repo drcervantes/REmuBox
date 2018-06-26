@@ -54,7 +54,7 @@ class Templates():
             while not progress.completed:
                 print("Completion: %s %%\r" % (str(progress.percent)), end="")
                 sys.stdout.flush()
-                progress.wait_for_completion(config['REMU']['timeout'])
+                progress.wait_for_completion(int(config['REMU']['timeout']))
 
         except KeyboardInterrupt:
             l.error("Interrupted.")

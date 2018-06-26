@@ -47,8 +47,16 @@ class RemoteComponent():
         try:
             r = requests.get(url)
             r.raise_for_status()
-            return ast.literal_eval(r.text)
+
+            try:
+                response = ast.literal_eval(r.text)
+            except ValueError:
+                response = r.text
+
+            return response
+
         except requests.exceptions.ConnectionError:
             l.exception("Error could not connect to %s:%d", self.ip, self.port)
+
         except requests.exceptions.HTTPError:
             l.exception("Error requesting %s from %s:%d", method, self.ip, self.port)

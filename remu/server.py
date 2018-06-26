@@ -121,12 +121,12 @@ class WorkshopManager():
                 clones.append(machine)
             except Exception as e:
                 msg = "Error cloning: {}".format(machine.name)
-                l.error(msg)
+                l.exception(msg)
                 for c in clones:
                     c.remove()
-                raise Exception(msg)
+                return False
 
-        return unit_path
+        return True
 
     def unit_to_str(self, sid):
         path = self._get_unit(sid)

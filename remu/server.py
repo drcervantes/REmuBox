@@ -1,8 +1,6 @@
 """
 Notes:
-Start performance collecting when starting a machine
-... setup_metrics needs to be called after machine is running
-When removing the machine, may need to remove snapshot first
+    VIRTUALBOX DID NOT IMPLEMENT DELETE SNAPSHOT WTF
 """
 import logging
 import socket
@@ -36,6 +34,14 @@ class WorkshopManager():
             raise Exception("No snapshot found for %s. Unable to clone!" % machine.name)
 
         return machine.find_snapshot("")
+
+    def _delete_snapshot(self, machine):
+        """
+        Deleting a snapshot is not implemented in the virtualbox sdk for some reason so
+        a subprocess call is the next best thing.
+        """
+        snap_id = machine.current_snapshot.id_p
+        return subprocess.check_output([config['REMU']['vbox_manage'], "snapshot", machine.name, "delete", snap_id])
 
     def _get_free_port(self):
         """Briefly opens and closes a socket to obtain an available port through the 
@@ -248,8 +254,7 @@ class WorkshopManager():
                machine.state == vboxlib.MachineState(2):
                 l.info(" ... removing machine: %s", machine.name)
                 try:
-                    snapshot = self._get_first_snapshot(machine)
-                    machine.delete_snapshot(snapshot.id_p)
+                    self._delete_snapshot(machine)
                     machine.remove()
                 except Exception:
                     l.exception("Error removing machine: %s", machine.name)
@@ -338,7 +343,7 @@ class PerformanceMonitor():
             stats["vrde-active"] = bool(vrde.active)
         else:
             stats["vrde-active"] = False
-            
+
         session.unlock_machine()
 
         """

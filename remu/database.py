@@ -154,14 +154,13 @@ def insert_server(ip, port):
         l.exception(str(exc))
         return False
 
-def insert_workshop(name, desc, min_units, max_units, walkthrough, enabled):
+def insert_workshop(name, desc, min_units, max_units, enabled):
     """ TODO """
     workshop = Workshop(
         name=name,
         description=desc,
         min_instances=min_units,
         max_instances=max_units,
-        walkthrough=walkthrough,
         enabled=enabled
     )
     workshop.save()

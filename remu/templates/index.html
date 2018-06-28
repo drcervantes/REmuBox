@@ -56,7 +56,15 @@
           <tr>
             <td>{{ workshop.display_name }}</td>
             <td>{{ workshop.description }}</td>
-            <td></td>
+            <td>
+              {% if workshop.documents is none %}
+              No Supporting material at this time.
+              {% else %}
+              {% for doc in workshop.documents %}
+              <a href="/documents/{{ workshop.name }}/{{ doc }}">{{ doc }}</a><br>
+              {% endfor %}
+              {% endif %}
+            </td>
             <td>
               <a href="/checkout/windows/{{ workshop.name }}" download="{{ workshop.display_name }}.rdp">
                 <button class="download"><i class="fa fa-windows"></i></button>

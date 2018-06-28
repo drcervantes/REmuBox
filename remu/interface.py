@@ -1,6 +1,7 @@
 import zipfile
 import os
 import logging
+import pathlib
 
 from flask_login import login_required, current_user, login_user, logout_user
 from flask import Blueprint, redirect, render_template, url_for, send_from_directory, current_app, session
@@ -21,6 +22,12 @@ def index():
     for w in workshops:
         w['display_name'] = w['name'].replace("_", " ")
 
+        documents = pathlib.Path(config["REMU"]["workshops"], w['name'], "documents")
+        if documents.exists():
+            w['documents'] = [doc.name for doc in documents.iterdir() if doc.is_file()]
+        else:
+            w['documents'] = None
+
     sid = None
     if "sid" in session:
         # If the session has been recycled, clear the cookie
@@ -33,7 +40,7 @@ def index():
 
     return render_template("index.html", workshops=workshops, sid=sid)
 
-@user_bp.route('/checkout/<os_type>/<workshop>')
+@user_bp.route('/checkout/<path:os_type>/<path:workshop>')
 def checkout(os_type, workshop):
     # Get handle to manager module
     manager = current_app.config['MANAGER']
@@ -85,7 +92,10 @@ def checkout(os_type, workshop):
 
     return render_template(template, address=addr, session=ids[0])
 
-
+@user_bp.route('/documents/<path:workshop>/<path:filename>')
+def fetch_document(workshop, filename):
+    documents = pathlib.Path(config["REMU"]["workshops"], workshop, "documents")
+    return send_from_directory(documents, filename, as_attachment=True)
 
 
 
@@ -146,24 +156,19 @@ def add_server():
 def add_workshop():
     form = forms.AddWorkshopForm()
     if form.validate_on_submit():
-        l.debug("docs: %s", str(form.documents.data))
-
         base_dir = os.path.join(config["REMU"]["workshops"], form.name.data, "documents")
         if not os.path.exists(base_dir):
             os.mkdir(base_dir)
 
-        files = []
         for doc in form.documents.data:
             secured_name = secure_filename(doc.filename)
             doc.save(os.path.join(base_dir, secured_name))
-            files.append(secured_name)
 
         db.insert_workshop(
             form.name.data,
             form.description.data,
             form.mini.data,
             form.maxi.data,
-            files,
             form.enabled.data
         )
 

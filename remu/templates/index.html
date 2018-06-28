@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
+    <title>REmuBox</title>
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <style>
+      table {
+        width: 100%;
+      }
+      th {
+        padding-left: 1rem;
+      }
+      td {
+        padding: 1rem;
+        border: 1px solid #555;
+      }
+      .download {
+        font-size: 1.25rem;
+        color: #495057;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid #ced4da;
+        border-radius: .25rem;
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+      .download:hover {
+        color: #2196f3;
+      }
+      .center {
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+
+    <section class="container">
+      <div class="row" style="margin-bottom: 3rem">
+        <h1 class="center">REmuBox</h1>
+      </div>
+    </section>
+
+    <section class="container">
+      <div class="row">
+        {% if sid is none %}
+        <table class="center">
+          <tr>
+            <th>Workshop Name</th>
+            <th>Description</th>
+            <th>Supporting Materials</th>
+            <th>Download</th>
+          </tr>
+          {% for workshop in workshops %}
+          <tr>
+            <td>{{ workshop.display_name }}</td>
+            <td>{{ workshop.description }}</td>
+            <td></td>
+            <td>
+              <a href="/checkout/windows/{{ workshop.name }}" download="{{ workshop.display_name }}.rdp">
+                <button class="download"><i class="fa fa-windows"></i></button>
+              </a>
+              <a href="/checkout/linux/{{ workshop.name }}" download="{{ workshop.display_name }}.rdp">
+                <button class="download"><i class="fa fa-linux"></i></button>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}
+        <a href="#" download="{{ workshop.display_name }}.rdp">
+          <button class="download">Reconnect</button>
+        </a>
+        {% endif %}
+      </div>
+    </section>
+
+    <script type="text/javascript" src="{{ url_for('static', filename='vendor.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='bundle.js') }}"></script>
+  </body>
+</html>

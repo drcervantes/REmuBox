@@ -55,7 +55,7 @@
           </div>
           <ul class="sidebar-menu scrollable pos-r">
             <li class="nav-item mT-30 active">
-              <a class="sidebar-link" href="{{ url_for('gui.home') }}">
+              <a class="sidebar-link" href="{{ url_for('admin.home') }}">
                 <span class="icon-holder">
                   <i class="c-blue-500 ti-home"></i>
                 </span>
@@ -74,10 +74,10 @@
               </a>
               <ul class="dropdown-menu">                                
                 <li>
-                  <a class="sidebar-link" href="{{ url_for('gui.add_server') }}">Add Server</a>
+                  <a class="sidebar-link" href="{{ url_for('admin.add_server') }}">Add Server</a>
                 </li>
                 <li>
-                  <a class="sidebar-link" href="{{ url_for('gui.servers') }}">Status</a>
+                  <a class="sidebar-link" href="{{ url_for('admin.servers') }}">Status</a>
                 </li>
               </ul>
             </li>
@@ -93,10 +93,10 @@
               </a>
               <ul class="dropdown-menu">                                
                 <li>
-                  <a class="sidebar-link" href="{{ url_for('gui.add_workshop') }}">Add Workshop</a>
+                  <a class="sidebar-link" href="{{ url_for('admin.add_workshop') }}">Add Workshop</a>
                 </li>
                 <li>
-                  <a class="sidebar-link" href="{{ url_for('gui.add_workshop') }}">Manage</a>
+                  <a class="sidebar-link" href="{{ url_for('admin.add_workshop') }}">Manage</a>
                 </li>
               </ul>
             </li>
@@ -108,7 +108,7 @@
           <div class="header-container">
             <ul class="nav-right">
               <li>
-                <a href="{{ url_for('gui.logout') }}" class="d-b td-n bgcH-grey-100 c-grey-700">
+                <a href="{{ url_for('admin.logout') }}" class="d-b td-n bgcH-grey-100 c-grey-700">
                   <i class="ti-power-off mR-10"></i>
                   <span>Logout</span>
                 </a>

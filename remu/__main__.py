@@ -23,7 +23,7 @@ from remu.manager import Manager
 from remu.server import WorkshopManager, PerformanceMonitor
 from remu.remote import RemoteComponent
 from remu.importer import Templates
-from remu.interface import bp
+from remu.interface import user_bp, admin_bp
 from remu.settings import config
 
 def create_app():
@@ -41,13 +41,19 @@ def create_app():
     key = config['REMU']['secret_key'].encode()
     fern = fernet.Fernet(key)
 
+    # We are required to set user_loader to the method responsible for
+    # user account lookup.
     login_manager = flask_login.LoginManager(app)
-    login_manager.login_view = 'gui.login'
+    login_manager.login_view = 'admin.login'
     login_manager.user_loader(db.get_user)
 
-    @app.route('/')
-    def catch_root():
-        return "portal"
+    # Ensure the application is able to reach the Manager module.
+    for m in modules:
+        if isinstance(m, Manager):
+            app.config['MANAGER'] = m
+
+    if "MANAGER" not in app.config:
+        app.config['MANAGER'] = RemoteComponent(config['MANAGER']['address'], config['MANAGER']['port'], Manager)
 
     @app.route('/<path:path>')
     def catch_all(path):
@@ -214,7 +220,8 @@ if args.manager:
 application = create_app()
 
 if args.web:
-    application.register_blueprint(bp, url_prefix='/admin')
+    application.register_blueprint(user_bp)
+    application.register_blueprint(admin_bp, url_prefix='/admin')
 
 try:
     l.info("+--------------------------------------------------+")

@@ -2,7 +2,6 @@
 import logging
 import gevent
 import bson
-import ast
 import time
 
 from remu.settings import config
@@ -33,7 +32,7 @@ class Manager():
                 self.register_remote_server(s["ip"], s["port"])
 
         self.monitor_thread = gevent.spawn(self.monitor_service)
-        gevent.spawn(self.test)
+        # gevent.spawn(self.test)
 
     def test(self):
         time.sleep(10)
@@ -76,7 +75,7 @@ class Manager():
 
         self._run_workshop(server, workshop, session_id)
 
-        vrde_ports = db.get_vrde_ports(server, session_id)
+        vrde_ports = db.get_vrde_ports(session_id)
 
         # Add entries to NGINX
         # if self.nginx:
@@ -94,7 +93,7 @@ class Manager():
         #     )
         #     self.remote.request(url)
 
-        return session_id
+        return ["{}_{}".format(session_id, port) for port in vrde_ports]
 
     @classmethod
     def load_balance(cls, workshop):
@@ -227,6 +226,7 @@ class Manager():
 
             # Get active sessions
             active = db.get_active_sessions()
+            l.debug("Current active sessions: %s", str(active))
 
             if active:
                 # Check for active sessions with no active vrde connections

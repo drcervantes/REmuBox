@@ -14,7 +14,7 @@ class Workshop(Document):
     enabled = BooleanField()
     min_instances = IntField()
     max_instances = IntField()
-    walkthrough = StringField()
+    documents = ListField(StringField())
 
 class Machine(EmbeddedDocument):
     name = StringField()

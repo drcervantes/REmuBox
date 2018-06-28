@@ -4,6 +4,12 @@ l = logging.getLogger('default')
 
 from remu.models import Server, Workshop, Session, User, Machine
 
+def session_exists(sid):
+    for server in Server.objects():
+        if sid in server.sessions:
+            return True
+    return False
+
 def get_workshop(name):
     """Returns the workshop entry corresponding to the workshop name."""
     workshop = Workshop.objects(name=name).first()
@@ -20,15 +26,18 @@ def get_server_from_session(sid):
             return server.to_mongo().to_dict()
     return None
 
+def get_vrde_machine_names(sid):
+    server = get_server_from_session(sid)
+    return [machine['name'] for machine in server['sessions'][sid]['machines'] if machine['port'] > 1]
+
 def get_all_workshops():
     """Returns all workshop entries as a list of dictionaries unless json is True."""
     workshops = Workshop.objects().exclude('id')
     return [w.to_mongo().to_dict() for w in workshops]
 
-def get_vrde_ports(ip, sid):
-    server = Server.objects(ip=ip).first()
-    session = server.sessions[sid]
-    return [machine.port for machine in session.machines if machine.port > 0]
+def get_vrde_ports(sid):
+    server = get_server_from_session(sid)
+    return [machine['port'] for machine in server['sessions'][sid]['machines'] if machine['port'] > 1]
 
 def get_user(username):
     """ TODO """
@@ -68,7 +77,7 @@ def get_active_sessions():
     active = {}
     for server in get_all_servers():
         for sid, session in server['sessions'].items():
-            if session['available']:
+            if not session['available']:
                 active[sid] = session
     return active
 
@@ -168,7 +177,7 @@ def insert_session(ip, sid, name, password):
 def insert_machine(ip, sid, name, port):
     server = Server.objects(ip=ip).first()
     session = server.sessions[sid]
-    session.machines.append(Machine(name=name, port=port, active=True))
+    session.machines.append(Machine(name=name, port=port, active=False))
     session.save()
 
 def remove_session(ip, session_id):

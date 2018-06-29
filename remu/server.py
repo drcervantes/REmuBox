@@ -11,6 +11,7 @@ import virtualbox
 import virtualbox.library as vboxlib
 import psutil
 
+from remu.importer import Templates
 from remu.util import rand_str
 from remu.settings import config
 
@@ -20,6 +21,9 @@ class WorkshopManager():
     def __init__(self):
         l.info("WorkshopManager module starting...")
         self.vbox = virtualbox.VirtualBox()
+
+        with Templates(self.vbox) as t:
+            self.workshop_config = t.get_templates()
 
     def clean_up(self):
         l.info(" ... WorkshopManager cleaning up")
@@ -35,13 +39,20 @@ class WorkshopManager():
 
         return machine.find_snapshot("")
 
-    def _delete_snapshot(self, machine):
+    def _delete_machine(self, machine):
         """
-        Deleting a snapshot is not implemented in the virtualbox sdk for some reason so
-        a subprocess call is the next best thing.
+        Virtualbox will complain about missing hard disks if the snapshots are not deleted
+        prior to removing the machine. Furthermore, deleting a snapshot is not implemented
+        in the virtualbox sdk for some reason so a subprocess call is the next best thing.
         """
-        snap_id = machine.current_snapshot.id_p
-        return subprocess.check_output([config['REMU']['vbox_manage'], "snapshot", machine.name, "delete", snap_id])
+
+        # snap_id = machine.current_snapshot.id_p
+        # output = subprocess.check_output(
+        #     [config['REMU']['vbox_manage'], "snapshot", machine.name, "delete", snap_id])
+        # machine.remove()
+
+        output = subprocess.check_output(
+            [config['REMU']['vbox_manage'], "unregistervm", machine.name, "--delete"])
 
     def _get_free_port(self):
         """Briefly opens and closes a socket to obtain an available port through the 
@@ -90,25 +101,47 @@ class WorkshopManager():
         if template not in group_list:
             raise Exception("Template for %s was not found!" % workshop)
 
+        # We want to maintain a list of the cloned machines in the event
+        # that virtualbox fails during the cloning process and we can
+        # remove the impartial unit.
         clones = []
-        int_net = rand_str(10)
+
+        # Group name for the new unit
         unit_path = "/" + workshop + '-Units/' + session_id
+
+        # Get the configuration file for the workshop
+        wconfig = next((w for w in self.workshop_config if w["name"] == workshop), None)
+
+        # Generate a random internal network name
+        base_int_net = rand_str(10)
 
         for machine in self._get_unit_machines(template):
             clone = self._clone_vm(machine, group=[unit_path,])
-            
+
             try:
                 session = clone.create_session(vboxlib.LockType(2))
+
+                # Get the configuration specific to this machine
+                vm_config = next((vm for vm in wconfig["vms"] if vm["name"] == machine.name), None)
 
                 machine_name = machine.name + "_" + session_id
                 session.machine.name = machine_name
                 l.info("Cloned machine: %s", machine_name)
-                
-                adapter = session.machine.get_network_adapter(0)
 
-                adapter.attachment_type = vboxlib.NetworkAttachmentType(3)
-                adapter.internal_network = int_net
-                l.info(" ... intnet: %s", int_net)     
+                # Get the internal networks defined in the config, if any
+                intnets = [v for k, v in vm_config.items() if 'intnet' in k.lower()]
+
+                if bool(intnets):
+                    for i, net in enumerate(intnets):
+                        adapter = session.machine.get_network_adapter(i)
+                        adapter.attachment_type = vboxlib.NetworkAttachmentType(3)
+                        adapter.internal_network = net + base_int_net
+                        l.info(" ... intnet: %s", adapter.internal_network)
+                else:
+                    adapter = session.machine.get_network_adapter(0)
+                    adapter.attachment_type = vboxlib.NetworkAttachmentType(3)
+                    adapter.internal_network = base_int_net
+                    l.info(" ... intnet: %s", base_int_net)
 
                 if session.machine.vrde_server.enabled:
                     port = str(self._get_free_port())
@@ -125,7 +158,7 @@ class WorkshopManager():
 
                 self._set_group(clone.name, unit_path)
                 clones.append(machine)
-            except Exception as e:
+            except Exception:
                 msg = "Error cloning: {}".format(machine.name)
                 l.exception(msg)
                 for c in clones:
@@ -254,8 +287,7 @@ class WorkshopManager():
                machine.state == vboxlib.MachineState(2):
                 l.info(" ... removing machine: %s", machine.name)
                 try:
-                    self._delete_snapshot(machine)
-                    machine.remove()
+                    self._delete_machine(machine)
                 except Exception:
                     l.exception("Error removing machine: %s", machine.name)
                     return False

@@ -13,11 +13,13 @@ l = logging.getLogger('default')
 TODO: vrde port is checked by the machine configuration and not the xml
 """
 class Templates():
-    def __init__(self, alt_config=None):
+    def __init__(self, vbox=None, alt_config=None):
+        self.vbox = vbox
         self.path = alt_config or config['REMU']['workshops']
 
     def __enter__(self):
-        self.vbox = virtualbox.VirtualBox()
+        if not self.vbox:
+            self.vbox = virtualbox.VirtualBox()
         return self
 
     def __exit__(self, *args):
@@ -36,7 +38,7 @@ class Templates():
 
         return workshop
 
-    def _get_templates(self):
+    def get_templates(self):
         workshops = []
 
         for workshop_dir in os.listdir(self.path):
@@ -100,7 +102,7 @@ class Templates():
             if idx > 0:
                 existing_templates.append(group[1:idx])
 
-        templates = [t for t in self._get_templates() if t["name"] not in existing_templates]
+        templates = [t for t in self.get_templates() if t["name"] not in existing_templates]
 
         for t in templates:
             self._import_template(t)

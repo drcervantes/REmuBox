@@ -39,6 +39,16 @@ class WorkshopManager():
 
         return machine.find_snapshot("")
 
+    def _get_recent_snapshot(self, machine):
+        if machine.snapshot_count < 1:
+            raise Exception("No snapshot found for %s. Unable to clone!" % machine.name)
+
+        snapshot = machine.find_snapshot("")
+        while bool(snapshot.children):
+            snapshot = snapshot.children[0]
+
+        return snapshot
+
     def _delete_machine(self, machine):
         """
         Virtualbox will complain about missing hard disks if the snapshots are not deleted
@@ -83,7 +93,7 @@ class WorkshopManager():
         return self.vbox.get_machines_by_groups([unit,])
 
     def _clone_vm(self, machine, snapshot_name=None, clone_name=None, group=None):
-        snapshot = self._get_first_snapshot(machine)
+        snapshot = self._get_recent_snapshot(machine)
         if snapshot_name is not None:
             snapshot = machine.find_snapshot(snapshot_name)
 

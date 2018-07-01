@@ -57,11 +57,11 @@
             <td>{{ workshop.display_name }}</td>
             <td>{{ workshop.description }}</td>
             <td>
-              {% if workshop.documents is none %}
+              {% if workshop.materials is none %}
               No Supporting material at this time.
               {% else %}
-              {% for doc in workshop.documents %}
-              <a href="/documents/{{ workshop.name }}/{{ doc }}">{{ doc }}</a><br>
+              {% for doc in workshop.materials %}
+              <a href="/materials/{{ workshop.name }}/{{ doc }}">{{ doc }}</a><br>
               {% endfor %}
               {% endif %}
             </td>

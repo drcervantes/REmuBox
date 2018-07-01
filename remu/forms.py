@@ -14,13 +14,13 @@ class LoginForm(FlaskForm):
 class AddServerForm(FlaskForm):
     address = StringField('Address', validators=[DataRequired()])
     port    = StringField('Port', validators=[DataRequired()])
-    submit  = SubmitField('Add Server')
+    submit  = SubmitField('Save')
 
 class AddWorkshopForm(FlaskForm):
     name        = StringField('Workshop Name', validators=[DataRequired()])
     description = TextAreaField('Description', validators=[DataRequired()])
     mini        = StringField('Min Instances', validators=[DataRequired()])
     maxi        = StringField('Max Instances', validators=[DataRequired()])
-    documents   = MultipleFileField('Supporting Documents', validators=[DataRequired()])
+    materials   = MultipleFileField('Materials')
     enabled     = BooleanField('Enabled')
-    submit      = SubmitField('Add Workshop')
+    submit      = SubmitField('Save')

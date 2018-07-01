@@ -1,140 +1,46 @@
 {% extends "base.html" %}
 
+<!-- 
+    # Manage Servers
+    # Add new
+    # 127.0.0.1 9000 Edit Remove -->
+
 {% block body %}        
 <main class="main-content bgc-grey-100">
   <div id="mainContent">
     <div class="full-container">
-
-      <div class="row">
-        <div class="col-md-6">
-          <div class="bgc-white bd bdrs-3 p-20 mB-20">
+      <div class="bgc-white bd bdrs-3 p-20 mB-20">
+        <div class="row">
+          <div class="col-sm-6">
+            <h4 class="c-grey-900 mB-10">Manage Servers</h4>
+            <a href="{{ url_for('.add_server') }}">
+              <button class="btn btn-primary">
+                Add a Server
+              </button>
+            </a>
             <table class="table">
               <tr>
-                <td class="nb w-30">
-                  <small class="fw-600 c-grey-700">SERVER</small>
-                  <h4 class="c-grey-900 mB-0">192.168.1.2</h4>
-                </td>
-                <td class="nb w-30">
-                  <small class="fw-600 c-grey-700">PORT</small>
-                  <h4 class="c-grey-900 mB-0">9000</h4>
-                </td>
-                <td class="nb w-30">&nbsp;</td>
+                <th>Address</th>
+                <th>Port</th>
+                <th>Actions</th>
               </tr>
+              {% for server in server_data %}
+              <tr>
+                <td>{{ server.ip }}</td>
+                <td>{{ server.port }}</td>
+                <td>
+                  <a href="{{ url_for('.edit_server', address=server.ip) }}" alt="Edit">
+                    <button class="download"><i class="fa fa-pencil"></i></button>
+                  </a>
+                  <a href="{{ url_for('.remove_server', address=server.ip) }}" alt="Edit">
+                    <button class="download"><i class="fa fa-remove"></i></button>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
             </table>                        
-            
-            <div class="peers bdT pT-20 fxw-nw@lg+ jc-sb ta-c gap-10">
-              <div class="peer">
-                <div class="easy-pie-chart" data-size="80" data-percent="75" data-bar-color="#2196f3">
-                  <span></span>
-                </div>
-                <h6 class="fsz-sm">Overall CPU</h6>
-              </div>
-              <div class="peer">
-                <div class="easy-pie-chart" data-size="80" data-percent="50" data-bar-color="#2196f3">
-                  <span></span>
-                </div>
-                <h6 class="fsz-sm">Virtual Memory</h6>
-              </div>
-              <div class="peer">
-                <div class="easy-pie-chart" data-size="80" data-percent="90" data-bar-color="#2196f3">
-                  <span></span>
-                </div>
-                <h6 class="fsz-sm">Physical Memory</h6>
-              </div>
-              <div class="peer">
-                <table class="table">
-                <tr>
-                  <th class="nb">Uptime</th>
-                  <td class="nb">126 hours</td>
-                </tr>
-                <tr>
-                  <th>Sessions</th>
-                  <td>100</td>
-                </tr>
-                <tr>
-                  <th>Something</th>
-                  <td>100</td>
-                </tr>                       
-                </table>
-              </div>
-            </div>
-
-            <h4 class="c-grey-900 mB-10" data-toggle="collapse" data-target="#demo">Sessions</h4>
-            <table id="demo" class="table collapse show">
-              <thead>
-                <tr>
-                  <th scope="col">#</th>
-                  <th scope="col">Workshop</th>
-                  <th scope="col">Active Time</th>
-                  <th scope="col">Machines</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th scope="row">F12GW6</th>
-                  <td>Route Hijacking</td>
-                  <td>30 minutes</td>
-                  <td>
-                    <table class="table">
-                      <tbody>
-                      <tr>
-                        <td class="nb">Kali</td>
-                        <td class="nb">3001</td>
-                        <td class="nb"><span class="badge bgc-green-50 c-green-700 p-10 lh-0 tt-c badge-pill">Running</span></td>
-                      </tr>
-                      <tr>
-                        <td>CORE</td>
-                        <td>-</td>
-                        <td><span class="badge bgc-green-50 c-green-700 p-10 lh-0 tt-c badge-pill">Running</span></td>
-                      </tr>
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-                <tr>
-                  <th scope="row">2UI6GS</th>
-                  <td>Route Hijacking</td>
-                  <td>45 minutes</td>
-                  <td>
-                    <table class="table">
-                      <tbody>
-                      <tr>
-                        <td class="nb">Kali</td>
-                        <td class="nb">3002</td>
-                        <td class="nb"><span class="badge bgc-green-50 c-green-700 p-10 lh-0 tt-c badge-pill">Running</span></td>
-                      </tr>
-                      <tr>
-                        <td>CORE</td><td>-</td><td><span class="badge bgc-green-50 c-green-700 p-10 lh-0 tt-c badge-pill">Running</span></td>
-                      </tr>
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-                <tr>
-                  <th scope="row">3C53N1</th>
-                  <td>Wannacry</td>
-                  <td>60 minutes</td>
-                  <td>
-                    <table class="table">
-                      <tbody>
-                      <tr>
-                        <td class="nb">Windows 7</td>
-                        <td class="nb">3003</td>
-                        <td class="nb"><span class="badge bgc-deep-purple-50 c-deep-purple-700 p-10 lh-0 tt-c badge-pill">Ready</span></td>
-                      </tr>
-                      <tr>
-                        <td>Windows 7</td><td>3004</td><td><span class="badge bgc-deep-purple-50 c-deep-purple-700 p-10 lh-0 tt-c badge-pill">Ready</span></td>
-                      </tr>
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
           </div>
         </div>
-        
-      </div>
     </div>
   </div>
 </main>

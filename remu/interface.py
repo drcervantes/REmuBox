@@ -2,19 +2,21 @@ import zipfile
 import os
 import logging
 import pathlib
+import time
 
 from flask_login import login_required, current_user, login_user, logout_user
-from flask import Blueprint, redirect, render_template, url_for, send_from_directory, current_app, session
+from flask import (Blueprint, redirect, render_template, url_for, send_from_directory, 
+    current_app, session, request)
 from werkzeug.utils import secure_filename
 
 import remu.forms as forms
 import remu.database as db
 from remu.settings import config
 
-
 l = logging.getLogger('default')
 
 user_bp = Blueprint("user", __name__)
+admin_bp = Blueprint("admin", __name__)
 
 @user_bp.route("/")
 def index():
@@ -22,11 +24,11 @@ def index():
     for w in workshops:
         w['display_name'] = w['name'].replace("_", " ")
 
-        documents = pathlib.Path(config["REMU"]["workshops"], w['name'], "documents")
-        if documents.exists():
-            w['documents'] = [doc.name for doc in documents.iterdir() if doc.is_file()]
+        materials = pathlib.Path(config["REMU"]["workshops"], w['name'], "materials")
+        if materials.exists():
+            w['materials'] = [doc.name for doc in materials.iterdir() if doc.is_file()]
         else:
-            w['documents'] = None
+            w['materials'] = None
 
     sid = None
     if "sid" in session:
@@ -92,28 +94,36 @@ def checkout(os_type, workshop):
 
     return render_template(template, address=addr, session=ids[0])
 
-@user_bp.route('/documents/<path:workshop>/<path:filename>')
+@user_bp.route('/materials/<path:workshop>/<path:filename>')
 def fetch_document(workshop, filename):
-    documents = pathlib.Path(config["REMU"]["workshops"], workshop, "documents")
-    return send_from_directory(documents, filename, as_attachment=True)
-
-
-
-
+    materials = pathlib.Path(config["REMU"]["workshops"], workshop, "materials")
+    return send_from_directory(materials, filename, as_attachment=True)
 
 """
 Admin interface
 """
-admin_bp = Blueprint("admin", __name__)
 
 @admin_bp.route('/')
 @login_required
 def home():
-    return render_template('home.html')
+    # Not the most optimal but we should clean up the data a bit for display
+    data = db.get_all_servers()
+    for server in data:
+        for sid, s in server['sessions'].items():
+            # Get workshop name by object id
+            workshop = db.get_workshop(id=str(s["workshop"]))
+            s["workshop"] = workshop["name"].replace("_", " ")
 
-@admin_bp.route('/static/<path:path>')
-def assets(path):
-    return send_from_directory('static', path)
+            # Get the length of time the session has been active
+            hours, rem = divmod(time.time() - s["start_time"], 3600)
+            minutes, seconds = divmod(rem, 60)
+            s["time"] = "{:0>2}:{:0>2}:{:0>2}".format(int(hours), int(minutes), int(seconds))
+
+            for machine in s['machines']:
+                machine['name'] = machine['name'][:machine['name'].rfind('_')]
+                machine['port'] = ("-" if machine['port'] == 1 else machine['port'])
+
+    return render_template('home.html', server_data=data)
 
 @admin_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -138,29 +148,51 @@ def logout():
 @admin_bp.route('/servers', methods=['GET', 'POST'])
 @login_required
 def servers():
-    # Get the data to populate the web page here
-    
-    return render_template('servers.html')
+    return render_template('servers.html', server_data=db.get_all_servers())
 
-@admin_bp.route('/add_server', methods=['GET', 'POST'])
+@admin_bp.route('/servers/add', methods=['GET', 'POST'])
 @login_required
 def add_server():
     form = forms.AddServerForm()
     if form.validate_on_submit():
         db.insert_server(form.address.data, form.port.data)
-        return redirect(url_for('admin.home'))
+        return redirect(url_for('admin.servers'))
     return render_template('add_server.html', form=form)
 
-@admin_bp.route('/add_workshop', methods=['GET', 'POST'])
+@admin_bp.route('/servers/edit/<path:address>', methods=['GET', 'POST'])
+@login_required
+def edit_server(address):
+    form = forms.AddServerForm()
+    if form.validate_on_submit():
+        db.update_server(ip=form.address.data, port=form.port.data)
+        return redirect(url_for('admin.servers'))
+
+    server = db.get_server(address)
+    form.address.data = address
+    form.port.data = server['port']
+    return render_template('add_server.html', form=form)
+
+@admin_bp.route('/servers/remove/<path:address>', methods=['GET', 'POST'])
+@login_required
+def remove_server(address):
+    db.remove_server(address)
+    return redirect(url_for('admin.servers'))
+
+@admin_bp.route('/workshops', methods=['GET', 'POST'])
+@login_required
+def workshops():
+    return render_template('workshops.html', data=db.get_all_workshops())
+
+@admin_bp.route('/workshops/add', methods=['GET', 'POST'])
 @login_required
 def add_workshop():
     form = forms.AddWorkshopForm()
     if form.validate_on_submit():
-        base_dir = os.path.join(config["REMU"]["workshops"], form.name.data, "documents")
+        base_dir = os.path.join(config["REMU"]["workshops"], form.name.data, "materials")
         if not os.path.exists(base_dir):
             os.mkdir(base_dir)
 
-        for doc in form.documents.data:
+        for doc in form.materials.data:
             secured_name = secure_filename(doc.filename)
             doc.save(os.path.join(base_dir, secured_name))
 
@@ -172,5 +204,48 @@ def add_workshop():
             form.enabled.data
         )
 
-        return redirect(url_for('admin.home'))
+        return redirect(url_for('admin.workshops'))
     return render_template('add_workshop.html', form=form)
+
+@admin_bp.route('/workshops/edit/<path:oid>', methods=['GET', 'POST'])
+@login_required
+def edit_workshop(oid):
+    form = forms.AddWorkshopForm()
+    if form.validate_on_submit():
+        db.update_workshop(
+            oid,
+            name=form.name.data,
+            description=form.description.data,
+            min_instances=form.mini.data,
+            max_instances=form.maxi.data,
+            enabled=form.enabled.data
+        )
+        return redirect(url_for('admin.workshops'))
+    else:
+        workshop = db.get_workshop(id=oid)
+        form.name.data = workshop["name"]
+        form.description.data = workshop["description"]
+        form.mini.data = workshop["min_instances"]
+        form.maxi.data = workshop["max_instances"]
+        form.enabled.data = workshop["enabled"]
+
+        materials = pathlib.Path(config["REMU"]["workshops"], workshop['name'], "materials")
+        if materials.exists():
+            mats = [doc.name for doc in materials.iterdir() if doc.is_file()]
+        else:
+            mats = None
+
+    return render_template('edit_workshop.html', form=form, materials=mats)
+
+@admin_bp.route('/workshops/edit/<path:name>/<path:material>', methods=['GET', 'POST'])
+@login_required
+def remove_material(name, material):
+    file = pathlib.Path(config["REMU"]["workshops"], name, "materials", material)
+    os.remove(file)
+    return redirect(url_for('admin.edit_workshop', name=name))
+
+@admin_bp.route('/workshops/remove/<path:oid>', methods=['GET', 'POST'])
+@login_required
+def remove_workshop(oid):
+    db.remove_workshop(oid)
+    return redirect(url_for('admin.workshops'))

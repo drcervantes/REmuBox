@@ -31,7 +31,7 @@ def create_app():
     Setup the Flask application to handle any remote service routine calls. This includes
     interaction between the modules when run remotely and the front-end.
     """
-    app = flask.Flask('remu')
+    app = flask.Flask(__name__)
 
     app.config.update(dict(
         DEBUG=True,
@@ -97,6 +97,16 @@ def create_app():
         # We must return a string for the Flask view --- needs to be encrypted??
         l.debug("Result: %s", str(result))
         return str(result)
+
+    @app.before_request
+    def assets():
+        """
+        Ugly workaround to deal with the inline resource requests from bundle.js
+        """
+        if "static" in flask.request.path:
+            file = flask.request.path[flask.request.path.rfind('/')+1:]
+            return flask.send_from_directory('static', file)
+        return None
 
     return app
 

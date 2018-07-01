@@ -1,8 +1,10 @@
 """ TODO """
 import logging
-l = logging.getLogger('default')
+import time
 
 from remu.models import Server, Workshop, Session, User, Machine
+
+l = logging.getLogger('default')
 
 def session_exists(sid):
     for server in Server.objects():
@@ -10,10 +12,9 @@ def session_exists(sid):
             return True
     return False
 
-def get_workshop(name):
+def get_workshop(**kwargs):
     """Returns the workshop entry corresponding to the workshop name."""
-    workshop = Workshop.objects(name=name).first()
-    return workshop.to_mongo().to_dict()
+    return Workshop.objects(**kwargs).first().to_mongo().to_dict()
 
 def get_workshop_from_session(ip, sid):
     server = Server.objects(ip=ip).first()
@@ -32,8 +33,10 @@ def get_vrde_machine_names(sid):
 
 def get_all_workshops():
     """Returns all workshop entries as a list of dictionaries unless json is True."""
-    workshops = Workshop.objects().exclude('id')
-    return [w.to_mongo().to_dict() for w in workshops]
+    workshops = [w.to_mongo().to_dict() for w in Workshop.objects()]
+    for w in workshops:
+        w['_id'] = str(w['_id'])
+    return workshops
 
 def get_vrde_ports(sid):
     server = get_server_from_session(sid)
@@ -129,7 +132,7 @@ def update_session_ports(ip, session_id, ports):
     server.sessions[session_id]['ports'] = ports
     server.save()
 
-def update_server_status(ip, **kwargs):
+def update_server(ip, **kwargs):
     server = Server.objects(ip=ip).first()
     for k, v in kwargs.items():
         server[k] = v
@@ -143,6 +146,12 @@ def update_machine_status(ip, session_id, **kwargs):
             for k, v in kwargs.items():
                 m[k] = v
         server.save()
+
+def update_workshop(oid, **kwargs):
+    workshop = Workshop.objects(id=oid).first()
+    for k, v in kwargs.items():
+        workshop[k] = v
+    workshop.save()
 
 def insert_server(ip, port):
     """Insert a new server document."""
@@ -168,7 +177,12 @@ def insert_workshop(name, desc, min_units, max_units, enabled):
 def insert_session(ip, sid, name, password):
     """ TODO """
     workshop = Workshop.objects(name=name).first()
-    session = Session(workshop=workshop, password=password, available=True)
+    session = Session(
+        workshop=workshop,
+        password=password,
+        available=True,
+        start_time=time.time()
+    )
     server = Server.objects(ip=ip).first()
     server.sessions[sid] = session
     server.save()
@@ -184,6 +198,11 @@ def remove_session(ip, session_id):
     server = Server.objects(ip=ip).first()
     del server.sessions[session_id]
     server.save()
+
+def remove_workshop(oid):
+    """ TODO """
+    workshop = Workshop.objects(id=oid).first()
+    workshop.delete()
 
 def remove_server(ip):
     """ TODO """

@@ -3,8 +3,26 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
-    <title>Blank</title>
-    <style>#loader{transition:all .3s ease-in-out;opacity:1;visibility:visible;position:fixed;height:100vh;width:100%;background:#fff;z-index:90000}#loader.fadeOut{opacity:0;visibility:hidden}.spinner{width:40px;height:40px;position:absolute;top:calc(50% - 20px);left:calc(50% - 20px);background-color:#333;border-radius:100%;-webkit-animation:sk-scaleout 1s infinite ease-in-out;animation:sk-scaleout 1s infinite ease-in-out}@-webkit-keyframes sk-scaleout{0%{-webkit-transform:scale(0)}100%{-webkit-transform:scale(1);opacity:0}}@keyframes sk-scaleout{0%{-webkit-transform:scale(0);transform:scale(0)}100%{-webkit-transform:scale(1);transform:scale(1);opacity:0}}.nb{border:none!important}.w-30{width:30%}.peer table{flex:initial}.adj-slider{margin-top:calc(.375rem + 1px)}</style>
+    <title>REmuBox Administration</title>
+    <style>#loader{transition:all .3s ease-in-out;opacity:1;visibility:visible;position:fixed;height:100vh;width:100%;background:#fff;z-index:90000}#loader.fadeOut{opacity:0;visibility:hidden}.spinner{width:40px;height:40px;position:absolute;top:calc(50% - 20px);left:calc(50% - 20px);background-color:#333;border-radius:100%;-webkit-animation:sk-scaleout 1s infinite ease-in-out;animation:sk-scaleout 1s infinite ease-in-out}@-webkit-keyframes sk-scaleout{0%{-webkit-transform:scale(0)}100%{-webkit-transform:scale(1);opacity:0}}@keyframes sk-scaleout{0%{-webkit-transform:scale(0);transform:scale(0)}100%{-webkit-transform:scale(1);transform:scale(1);opacity:0}}.nb{border:none!important}.w-30{width:30%}.peer table{flex:initial}.adj-slider{margin-top:calc(.375rem + 1px)}.hand:hover{curser:pointer}
+      .download {
+        font-size: 1.25rem;
+        color: #495057;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid #ced4da;
+        border-radius: .25rem;
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+      .download:hover {
+        color: #2196f3;
+      }
+      .action {
+        font-size: 1em;
+        padding: 2px 8px;
+      }
+    </style>
     <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
   </head>
   <body class="app">
@@ -62,43 +80,21 @@
                 <span class="title">Dashboard</span>
               </a>
             </li>
-            <li class="nav-item dropdown">
-              <a class="dropdown-toggle" href="javascript:void(0);">
+            <li class="nav-item active">
+              <a class="sidebar-link" href="{{ url_for('admin.servers') }}">
                 <span class="icon-holder">
-                    <i class="c-red-500 ti-files"></i>
-                  </span>
+                  <i class="c-blue-500 ti-harddrives"></i>
+                </span>
                 <span class="title">Servers</span>
-                <span class="arrow">
-                    <i class="ti-angle-right"></i>
-                  </span>
               </a>
-              <ul class="dropdown-menu">                                
-                <li>
-                  <a class="sidebar-link" href="{{ url_for('admin.add_server') }}">Add Server</a>
-                </li>
-                <li>
-                  <a class="sidebar-link" href="{{ url_for('admin.servers') }}">Status</a>
-                </li>
-              </ul>
             </li>
-            <li class="nav-item dropdown">
-              <a class="dropdown-toggle" href="javascript:void(0);">
+            <li class="nav-item active">
+              <a class="sidebar-link" href="{{ url_for('admin.workshops') }}">
                 <span class="icon-holder">
-                    <i class="c-red-500 ti-files"></i>
-                  </span>
+                  <i class="c-blue-500 ti-desktop"></i>
+                </span>
                 <span class="title">Workshops</span>
-                <span class="arrow">
-                    <i class="ti-angle-right"></i>
-                  </span>
               </a>
-              <ul class="dropdown-menu">                                
-                <li>
-                  <a class="sidebar-link" href="{{ url_for('admin.add_workshop') }}">Add Workshop</a>
-                </li>
-                <li>
-                  <a class="sidebar-link" href="{{ url_for('admin.add_workshop') }}">Manage</a>
-                </li>
-              </ul>
             </li>
           </ul>
         </div>
@@ -120,7 +116,7 @@
         {% block body %}{% endblock %}
         
         <footer class="bdT ta-c p-30 lh-0 fsz-sm c-grey-600">
-          <span>Copyright © 2017 Designed by <a href="https://colorlib.com" target="_blank" title="Colorlib">Colorlib</a>. All rights reserved.</span>
+          <span>Copyright © 2018</span>
         </footer>
       </div>
     </div>

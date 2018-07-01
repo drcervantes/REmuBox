@@ -121,7 +121,7 @@ class Manager():
         for server in servers:
             instances += db.session_count_by_workshop(server['ip'], workshop)
 
-        max_instances = db.get_workshop(workshop)['max_instances']
+        max_instances = db.get_workshop(name=workshop)['max_instances']
         if instances >= max_instances:
             l.error("Maximum number of instances met or exceeded.")
             return None
@@ -205,7 +205,7 @@ class Manager():
         else:
             status = self.servers[ip].update()
 
-        db.update_server_status(ip, cpu=status["cpu"], mem=status["mem"], hdd=status["hdd"])
+        db.update_server(ip, cpu=status["cpu"], mem=status["mem"], hdd=status["hdd"])
         l.debug(" ... update: %s", str(status))
 
         for sid in status['sessions']:

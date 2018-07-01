@@ -19,13 +19,13 @@ class Machine(EmbeddedDocument):
     name = StringField()
     port = IntField()
     active = BooleanField()
-    start_time = IntField()
 
 class Session(EmbeddedDocument):
     workshop = ReferenceField(Workshop)
     machines = ListField(EmbeddedDocumentField(Machine))
     password = StringField()
     available = BooleanField()
+    start_time = FloatField()
 
 class Server(Document):
     ip = StringField(unique=True)

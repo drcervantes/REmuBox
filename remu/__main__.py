@@ -104,7 +104,7 @@ def create_app():
         Ugly workaround to deal with the inline resource requests from bundle.js
         """
         if "static" in flask.request.path:
-            file = flask.request.path[flask.request.path.rfind('/')+1:]
+            file = flask.request.path[flask.request.path.find("static")+7:]
             return flask.send_from_directory('static', file)
         return None
 

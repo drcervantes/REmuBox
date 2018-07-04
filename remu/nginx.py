@@ -1,9 +1,12 @@
 """ TODO """
 import pathlib
 import subprocess
+import logging
 
 import remu.util
 from remu.settings import config
+
+l = logging.getLogger('default')
 
 class Nginx():
     """ TODO """
@@ -12,17 +15,26 @@ class Nginx():
 
         self.rdp_maps = self.path.parent / 'rdp_maps.conf'
         if not self.rdp_maps.exists():
-            with open(self.rdp_maps, "w"):
-                pass
+            self.create_empty(self.rdp_maps)
 
         self.rdp_upstreams = self.path.parent / 'rdp_upstreams.conf'
         if not self.rdp_upstreams.exists():
-            with open(self.rdp_upstreams, "w"):
-                pass
+            self.create_empty(self.rdp_upstreams)
 
-    def _reload(self):
+        self._nginx_call("start")
+
+    def clean_up(self):
+        self.create_empty(self.rdp_maps)
+        self.create_empty(self.rdp_upstreams)
+        self._nginx_call("stop")
+
+    def create_empty(self, path):
+        with path.open(mode="w"):
+            pass
+
+    def _nginx_call(self, cmd):
         """Inform nginx to reload the configuration."""
-        result = subprocess.check_output([str(self.path), "-s", "reload"])
+        result = subprocess.check_output(["service", "nginx", cmd])
         return result
 
     def add_mapping(self, session, server, ports):
@@ -37,10 +49,12 @@ class Nginx():
                 address = server + ":" + str(port)
 
                 new_map = session_id + " " + upstream + ";\n"
+                l.info("New mapping: %s", new_map)
                 mappings.append(new_map)
                 self.write_conf(map_conf, mappings)
 
                 new_upstream = "upstream " + upstream + " {server " + address + ";}\n"
+                l.info("New upstream: %s", new_upstream)
                 upstreams.append(new_upstream)
                 self.write_conf(upstream_conf, upstreams)
 
@@ -50,6 +64,7 @@ class Nginx():
     def remove_mapping(self, session):
         """ TODO """
         with self.rdp_maps.open("r+") as map_conf, self.rdp_upstreams.open("r+") as upstream_conf:
+            l.info("Removing mapping for session: %s", session)
             mappings = list(map_conf)
             upstreams = list(upstream_conf)
 

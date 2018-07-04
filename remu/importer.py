@@ -31,6 +31,7 @@ class Templates():
 
         # Create a dictionary of all elements in the root
         workshop = {child.tag:child.text.strip() for child in root.getchildren() if not bool(child.getchildren())}
+        workshop["appliance"] = [child.text.strip() for child in root.findall("appliance")]
 
         # Create a list of dictionaries containing the elements within the vm tag
         vms = [{child.tag:child.text.strip() for child in vm.getchildren()} for vm in root.findall("vm")]
@@ -46,7 +47,8 @@ class Templates():
             workshop = self._parse_config(config_path)
 
             # Get the full path of the appliance for importing later
-            workshop["appliance"] = os.path.join(os.getcwd(), self.path, workshop_dir, workshop["appliance"])
+            for app in workshop["appliance"]:
+                app = os.path.join(os.getcwd(), self.path, workshop_dir, app)
             workshops.append(workshop)
 
         return workshops
@@ -67,27 +69,31 @@ class Templates():
     def _import_template(self, template):
         l.debug("Importing template: " + template["name"])
 
-        appliance = self.vbox.create_appliance()
-        appliance.read(template["appliance"])
+        try:
+            for app in template["appliance"]:
+                appliance = self.vbox.create_appliance()
+                appliance.read(app)
 
-        progress = appliance.import_machines()
-        self._progress_bar(progress)
+                progress = appliance.import_machines()
+                self._progress_bar(progress)
 
-        for machine_id in appliance.machines:
-            machine = self.vbox.find_machine(machine_id)
-            l.debug(" ... importing machine: %s", machine.name)
+                for machine_id in appliance.machines:
+                    machine = self.vbox.find_machine(machine_id)
+                    l.info(" ... importing machine: %s", machine.name)
 
-            group = "/" + template["name"] + "-Template"
-            dummy = subprocess.check_output([config['REMU']['vbox_manage'], "modifyvm", machine.name, "--groups", group])
-            session = machine.create_session()
-            progress, dummy = session.machine.take_snapshot(
-                'Original',
-                'Snapshot of the original state of the machine used for creating/restoring cloned units.',
-                False
-            )
-            progress.wait_for_completion()
-            session.unlock_machine()
-        l.debug("%s imported successfully", template["name"])
+                    group = "/" + template["name"] + "-Template"
+                    dummy = subprocess.check_output([config['REMU']['vbox_manage'], "modifyvm", machine.name, "--groups", group])
+                    session = machine.create_session()
+                    progress, dummy = session.machine.take_snapshot(
+                        'Original',
+                        'Snapshot of the original state of the machine used for creating/restoring cloned units.',
+                        False
+                    )
+                    progress.wait_for_completion()
+                    session.unlock_machine()
+            l.info("%s imported successfully", template["name"])
+        except Exception:
+            l.exception("Failed to import %s template!", template["name"])
 
     def import_new(self):
         """

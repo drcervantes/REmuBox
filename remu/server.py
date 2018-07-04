@@ -324,8 +324,8 @@ class PerformanceMonitor():
 
         # Obtain the performance collector built into virtual box
         self._vbox = virtualbox.VirtualBox()
-        self._vms = self._vbox.performance_collector
-        self._vms.setup_metrics(["*"], [], 10, 15)
+        # self._vms = self._vbox.performance_collector
+        # self._vms.setup_metrics(["*"], [], 10, 15)
 
         # Get the file path to the location where new virtual machines
         # will be created by virtualbox

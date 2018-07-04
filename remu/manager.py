@@ -14,16 +14,16 @@ l = logging.getLogger('default')
 
 class Manager():
     """ TODO """
-    def __init__(self, local_server, nginx, local_monitor):
+    def __init__(self, server, nginx, monitor):
         l.info("Manager module starting...")
 
         self.nginx = nginx
-        self.pm = local_monitor
+        self.pm = monitor
         self.servers = {}
 
-        if local_server:
+        if server:
             db.insert_server("127.0.0.1", 9000)
-            self.servers["127.0.0.1"] = local_server
+            self.servers["127.0.0.1"] = server
 
         # Create WorkshopManager objects for each server
         servers = db.get_all_servers()
@@ -78,20 +78,11 @@ class Manager():
         vrde_ports = db.get_vrde_ports(session_id)
 
         # Add entries to NGINX
-        # if self.nginx:
-        #     self.nginx.add_mapping(session_id, server, vrde_ports)
-        # else:
-        #     host = self.config['NGINX']['host']
-        #     port = self.config['NGINX']['port']
-        #     url = self.remote.build_url(
-        #         host,
-        #         port,
-        #         "add_mapping",
-        #         session=session_id,
-        #         server=server,
-        #         ports=session['ports']
-        #     )
-        #     self.remote.request(url)
+        self.nginx.add_mapping(
+            session=session_id,
+            server=server,
+            ports=vrde_ports
+        )
 
         return ["{}_{}".format(session_id, port) for port in vrde_ports]
 
@@ -182,10 +173,11 @@ class Manager():
         server.stop_unit(sid=session_id)
         workshop = db.get_workshop_from_session(ip, session_id)
         db.remove_session(ip, session_id)
+        self.nginx.remove_mapping(session=session_id)
 
         # Get the current number of sessions for the workshop
         instances = db.session_count_by_workshop(ip, workshop['name'])
-        l.info(" Current # of instances for %s: %d", workshop['name'], instances)
+        l.info("Current # of instances for %s: %d", workshop['name'], instances)
 
         # Ensure the minimum amount of sessions are met
         if instances < workshop['min_instances']:

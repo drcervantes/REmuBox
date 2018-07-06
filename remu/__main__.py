@@ -1,4 +1,7 @@
-""" TODO """
+# -*- coding: utf-8 -*- 
+
+from __future__ import with_statement
+from __future__ import absolute_import
 
 # The primary purpose of the gevent.monkey module is to carefully patch, in place,
 # portions of the standard library with gevent-friendly functions that behave in
@@ -11,10 +14,11 @@ import gevent.pywsgi as wsgi
 import logging
 import logging.config
 import cryptography.fernet as fernet
-import urllib.parse as ulib
+import urlparse
 import flask
 import argparse
 import ast
+import os.path
 import flask_login
 
 import remu.database as db
@@ -50,10 +54,16 @@ def create_app():
     # Ensure the application is able to reach the Manager module.
     for m in modules:
         if isinstance(m, Manager):
+            l.debug("Adding local manager to app config")
             app.config['MANAGER'] = m
 
     if "MANAGER" not in app.config:
-        app.config['MANAGER'] = RemoteComponent(config['MANAGER']['address'], config['MANAGER']['port'], Manager)
+        l.debug("Adding remote manager to app config")
+        app.config['MANAGER'] = RemoteComponent(
+            config['MANAGER']['address'],
+            config['MANAGER']['port'],
+            [Manager,]
+        )
 
     @app.route('/<path:path>')
     def catch_all(path):
@@ -61,7 +71,7 @@ def create_app():
         if "favicon.ico" in path:
             return ""
 
-        url = ulib.urlparse(flask.request.url)
+        url = urlparse.urlparse(flask.request.url)
         path = url.path[1:].encode()
         path = fern.decrypt(path).decode()
 
@@ -69,7 +79,7 @@ def create_app():
 
         if path.find('?') > 0:
             method, query = path.split('?')
-            query = ulib.parse_qsl(query)
+            query = urlparse.parse_qsl(query)
 
             params = {}
             for k, v in query:
@@ -153,6 +163,11 @@ def parse_arguments():
 
 args = parse_arguments()
 
+log_file = config['REMU']['log_file']
+if not os.path.exists(log_file):
+    with open(log_file, 'w+'):
+        pass
+
 logging.config.dictConfig({
     'version': 1,
     'formatters': {
@@ -172,7 +187,7 @@ logging.config.dictConfig({
             'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
             'formatter': 'default',
-            'filename': config['REMU']['log_file'],
+            'filename': log_file,
             'maxBytes': 1024
         }
     },
@@ -220,7 +235,7 @@ manager = None
 if args.manager:
     # If NGINX is not running locally, create object to handle remote calls
     if not args.nginx:
-        nginx = RemoteComponent(config['NGINX']['address'], config['NGINX']['port'], Nginx)
+        nginx = RemoteComponent(config['NGINX']['address'], config['NGINX']['port'], [Nginx])
 
     manager = Manager(server, nginx, monitor)
     modules.append(manager)

@@ -1,7 +1,7 @@
 """ TODO """
 import logging
 import json
-import urllib.parse
+import urlparse
 import cryptography.fernet as fernet
 import requests
 import ast
@@ -37,7 +37,7 @@ class RemoteComponent():
 
         for arg, val in kwargs.items():
             param = json.dumps(val)
-            param = urllib.parse.quote_plus(param)
+            param = urlparse.quote_plus(param)
             query += "{}={}&".format(arg, param)
 
         l.debug("URL prior to encryption: %s%s", url_base, query[:-1])

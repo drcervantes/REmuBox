@@ -1,5 +1,5 @@
 """ TODO """
-import pathlib
+import os.path
 import subprocess
 import logging
 
@@ -11,14 +11,15 @@ l = logging.getLogger('default')
 class Nginx():
     """ TODO """
     def __init__(self):
-        self.path = pathlib.Path(config['NGINX']['path'])
+        self.path = config['NGINX']['path']
+        self.dir = os.path.split(self.path)[0]
 
-        self.rdp_maps = self.path.parent / 'rdp_maps.conf'
-        if not self.rdp_maps.exists():
+        self.rdp_maps = os.path.join(self.dir, 'rdp_maps.conf')
+        if not os.path.exists(self.rdp_maps):
             self.create_empty(self.rdp_maps)
 
-        self.rdp_upstreams = self.path.parent / 'rdp_upstreams.conf'
-        if not self.rdp_upstreams.exists():
+        self.rdp_upstreams = os.path.join(self.dir, 'rdp_upstreams.conf')
+        if not os.path.exists(self.rdp_upstreams):
             self.create_empty(self.rdp_upstreams)
 
         self._nginx_call("start")
@@ -29,7 +30,7 @@ class Nginx():
         self._nginx_call("stop")
 
     def create_empty(self, path):
-        with path.open(mode="w"):
+        with open(path, 'w'):
             pass
 
     def _nginx_call(self, cmd):
@@ -39,7 +40,7 @@ class Nginx():
 
     def add_mapping(self, session, server, ports):
         """ TODO """
-        with self.rdp_maps.open("r+") as map_conf, self.rdp_upstreams.open("r+") as upstream_conf:
+        with open(self.rdp_maps, 'r+') as map_conf, open(self.rdp_upstreams, 'r+') as upstream_conf:
             mappings = list(map_conf)
             upstreams = list(upstream_conf)
 
@@ -63,7 +64,7 @@ class Nginx():
 
     def remove_mapping(self, session):
         """ TODO """
-        with self.rdp_maps.open("r+") as map_conf, self.rdp_upstreams.open("r+") as upstream_conf:
+        with open(self.rdp_maps, 'r+') as map_conf, open(self.rdp_upstreams, 'r+') as upstream_conf:
             l.info("Removing mapping for session: %s", session)
             mappings = list(map_conf)
             upstreams = list(upstream_conf)

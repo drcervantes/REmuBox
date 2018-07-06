@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import xml.etree.ElementTree as et
 import os
 import sys
@@ -13,9 +15,9 @@ l = logging.getLogger('default')
 TODO: vrde port is checked by the machine configuration and not the xml
 """
 class Templates():
-    def __init__(self, vbox=None, alt_config=None):
+    def __init__(self, vbox=None):
         self.vbox = vbox
-        self.path = alt_config or config['REMU']['workshops']
+        self.path = config['REMU']['workshops']
 
     def __enter__(self):
         if not self.vbox:
@@ -47,8 +49,7 @@ class Templates():
             workshop = self._parse_config(config_path)
 
             # Get the full path of the appliance for importing later
-            for app in workshop["appliance"]:
-                app = os.path.join(os.getcwd(), self.path, workshop_dir, app)
+            workshop["appliance"] = [os.path.join(self.path, workshop_dir, app) for app in workshop["appliance"]]
             workshops.append(workshop)
 
         return workshops
@@ -56,7 +57,7 @@ class Templates():
     def _progress_bar(self, progress):
         try:
             while not progress.completed:
-                print("Completion: %s %%\r" % (str(progress.percent)), end="")
+                print("Completion: %s %%\r" % str(progress.percent), end="")
                 sys.stdout.flush()
                 progress.wait_for_completion(int(config['REMU']['timeout']))
 
@@ -67,11 +68,12 @@ class Templates():
                 progress.cancel()
 
     def _import_template(self, template):
-        l.debug("Importing template: " + template["name"])
-
+        l.info("Importing template: %s", template["name"])
+        
         try:
             for app in template["appliance"]:
                 appliance = self.vbox.create_appliance()
+                l.debug(" ... reading: %s", str(app))
                 appliance.read(app)
 
                 progress = appliance.import_machines()

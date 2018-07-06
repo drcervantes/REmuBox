@@ -6,10 +6,11 @@ import logging
 import socket
 import subprocess
 import contextlib
-import pathlib
 import virtualbox
 import virtualbox.library as vboxlib
+import os.path
 import psutil
+import platform
 
 from remu.importer import Templates
 from remu.util import rand_str
@@ -329,8 +330,7 @@ class PerformanceMonitor():
 
         # Get the file path to the location where new virtual machines
         # will be created by virtualbox
-        base_folder = self._vbox.compose_machine_filename('dummy', '/', '', '')
-        path = pathlib.Path(base_folder)
+        vm_path = self._vbox.compose_machine_filename('dummy', '/', '', '') 
 
         # Obtain physical devices
         try:
@@ -339,11 +339,16 @@ class PerformanceMonitor():
             l.exception("Unable to determine the physical devices of the machine.")
 
         # Find which storage device contains the virtual machines
-        for m in mounts:
-            if m.mountpoint == path.anchor:
-                self.mount = m.mountpoint
-                l.debug("Mount containing VMs: %s", self.mount)
-                break
+        if platform.system() == 'Windows':
+            anchor = os.path.splitdrive(vm_path)[0]
+
+            for m in mounts:
+                if m.mountpoint == anchor:
+                    self.mount = m.mountpoint
+                    l.debug("Mount containing VMs: %s", self.mount)
+                    break
+        else:
+            self.mount = '/'
 
     def clean_up(self):
         l.info(" ... PerformanceMonitor cleaning up")

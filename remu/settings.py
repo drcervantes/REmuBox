@@ -1,9 +1,10 @@
-import configparser
+from __future__ import absolute_import
+import ConfigParser
 
 def parse_config(path):
     """ TODO """
-    parser = configparser.ConfigParser()
+    parser = ConfigParser.SafeConfigParser()
     parser.read(path)
-    return {s:dict(parser.items(s)) for s in parser.sections()}
+    return dict((s, dict(parser.items(s))) for s in parser.sections())
 
 config = parse_config('config.ini')

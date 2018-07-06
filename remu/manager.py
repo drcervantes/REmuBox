@@ -218,7 +218,7 @@ class Manager():
 
             # Get active sessions
             active = db.get_active_sessions()
-            l.debug("Current active sessions: %s", str(active))
+            l.debug("Current active sessions: %s", str(active.keys()))
 
             if active:
                 # Check for active sessions with no active vrde connections

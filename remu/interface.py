@@ -1,13 +1,17 @@
 import zipfile
 import os
 import logging
-import pathlib
 import time
 
 from flask_login import login_required, current_user, login_user, logout_user
 from flask import (Blueprint, redirect, render_template, url_for, send_from_directory, 
     current_app, session, request)
 from werkzeug.utils import secure_filename
+
+try:
+    from os import scandir
+except ImportError:
+    from scandir import scandir  # use scandir PyPI module on Python < 3.5
 
 import remu.forms as forms
 import remu.database as db
@@ -24,9 +28,9 @@ def index():
     for w in workshops:
         w['display_name'] = w['name'].replace("_", " ")
 
-        materials = pathlib.Path(config["REMU"]["workshops"], w['name'], "materials")
-        if materials.exists():
-            w['materials'] = [doc.name for doc in materials.iterdir() if doc.is_file()]
+        materials = os.path.join(config["REMU"]["workshops"], w['name'], "materials")
+        if os.path.exists(materials):
+            w['materials'] = [doc.name for doc in scandir(materials) if doc.is_file()]
         else:
             w['materials'] = None
 
@@ -47,7 +51,7 @@ def checkout(os_type, workshop):
     # Get handle to manager module
     manager = current_app.config['MANAGER']
 
-    ids = manager.start_workshop(workshop='Route_Hijacking')
+    ids = manager.start_workshop(workshop=workshop)
 
     # Start_workshop returns a list so we take the first element, split
     # the name by '_' and take the first part (i.e. session_port)
@@ -96,7 +100,7 @@ def checkout(os_type, workshop):
 
 @user_bp.route('/materials/<path:workshop>/<path:filename>')
 def fetch_document(workshop, filename):
-    materials = pathlib.Path(config["REMU"]["workshops"], workshop, "materials")
+    materials = os.path.join(config["REMU"]["workshops"], workshop, "materials")
     return send_from_directory(materials, filename, as_attachment=True)
 
 """
@@ -188,13 +192,15 @@ def workshops():
 def add_workshop():
     form = forms.AddWorkshopForm()
     if form.validate_on_submit():
-        base_dir = os.path.join(config["REMU"]["workshops"], form.name.data, "materials")
-        if not os.path.exists(base_dir):
-            os.mkdir(base_dir)
+        l.debug("Materials: %s", str(form.materials.data))
+        if bool(form.materials.data[0]):
+            base_dir = os.path.join(config["REMU"]["workshops"], form.name.data, "materials")
+            if not os.path.exists(base_dir):
+                os.mkdir(base_dir)
 
-        for doc in form.materials.data:
-            secured_name = secure_filename(doc.filename)
-            doc.save(os.path.join(base_dir, secured_name))
+            for doc in form.materials.data:
+                secured_name = secure_filename(doc.filename)
+                doc.save(os.path.join(base_dir, secured_name))
 
         db.insert_workshop(
             form.name.data,
@@ -229,9 +235,9 @@ def edit_workshop(oid):
         form.maxi.data = workshop["max_instances"]
         form.enabled.data = workshop["enabled"]
 
-        materials = pathlib.Path(config["REMU"]["workshops"], workshop['name'], "materials")
-        if materials.exists():
-            mats = [doc.name for doc in materials.iterdir() if doc.is_file()]
+        materials = os.path.join(config["REMU"]["workshops"], w['name'], "materials")
+        if os.path.exists(materials):
+            mats = [doc.name for doc in scandir(materials) if doc.is_file()]
         else:
             mats = None
 
@@ -240,7 +246,7 @@ def edit_workshop(oid):
 @admin_bp.route('/workshops/edit/<path:name>/<path:material>', methods=['GET', 'POST'])
 @login_required
 def remove_material(name, material):
-    file = pathlib.Path(config["REMU"]["workshops"], name, "materials", material)
+    file = os.path.join(config["REMU"]["workshops"], name, "materials", material)
     os.remove(file)
     return redirect(url_for('admin.edit_workshop', name=name))
 

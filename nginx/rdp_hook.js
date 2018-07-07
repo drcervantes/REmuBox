@@ -12,7 +12,7 @@ function getSessionId(s) {
             s.log("RDP packet type = " + packet_type.toString());
 
 	    if (packet_type == 224) {
-		var i = 0;
+		var i = 11;
 		for (; i < s.buffer.length; i++) {
 		    if (s.buffer[i] == "\x0D" && s.buffer[i+1] == "\x0A")
 			break;

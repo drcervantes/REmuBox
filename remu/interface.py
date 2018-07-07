@@ -235,7 +235,7 @@ def edit_workshop(oid):
         form.maxi.data = workshop["max_instances"]
         form.enabled.data = workshop["enabled"]
 
-        materials = os.path.join(config["REMU"]["workshops"], w['name'], "materials")
+        materials = os.path.join(config["REMU"]["workshops"], workshop['name'], "materials")
         if os.path.exists(materials):
             mats = [doc.name for doc in scandir(materials) if doc.is_file()]
         else:

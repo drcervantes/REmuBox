@@ -269,9 +269,9 @@ class WorkshopManager():
                     # Change the machine name
                     name = session.machine.name
                     base_end = name.rfind('_') + 1
-                    name = name[:base_end] + new_sid
-                    session.machine.name = name
-                    l.debug(" ... new machine name: %s", name)
+                    new_name = name[:base_end] + new_sid
+                    session.machine.name = new_name
+                    l.debug(" ... new machine name: %s", new_name)
 
                     session.unlock_machine()
 

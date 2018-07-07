@@ -52,13 +52,16 @@ class Nginx():
                 new_map = session_id + " " + upstream + ";\n"
                 l.info("New mapping: %s", new_map)
                 mappings.append(new_map)
-                self.write_conf(map_conf, mappings)
-
+                
                 new_upstream = "upstream " + upstream + " {server " + address + ";}\n"
                 l.info("New upstream: %s", new_upstream)
                 upstreams.append(new_upstream)
-                self.write_conf(upstream_conf, upstreams)
+                
+            self.write_conf(map_conf, mappings)
+            self.write_conf(upstream_conf, upstreams)
 
+            self._nginx_call("reload")
+            
             return True
         return False
 

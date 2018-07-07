@@ -18,7 +18,9 @@ class Workshop(Document):
 class Machine(EmbeddedDocument):
     name = StringField()
     port = IntField()
-    active = BooleanField()
+    state = IntField(default=1)
+    vrde_active = BooleanField(default=False)
+    vrde_enabled = BooleanField(default=False)
 
 class Session(EmbeddedDocument):
     workshop = ReferenceField(Workshop)

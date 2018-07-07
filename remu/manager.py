@@ -143,7 +143,8 @@ class Manager():
 
     @classmethod
     def _create_session_id(cls):
-        return str(bson.ObjectId())
+        return remu.util.rand_str(int(config['REMU']['pass_len']))
+        # return str(bson.ObjectId())
 
     @classmethod
     def _create_password(cls):
@@ -201,8 +202,7 @@ class Manager():
         l.debug(" ... update: %s", str(status))
 
         for sid in status['sessions']:
-            for machine in status['sessions'][sid]:
-                db.update_machine_status(ip, sid, active=machine["vrde-active"])
+            db.update_machines(ip, sid, status['sessions'][sid])
 
     def monitor_service(self):
         # Sessions to be recycled after the timeout interval
@@ -211,7 +211,7 @@ class Manager():
         interval = int(config['REMU']['polling_interval'])
 
         while True:
-            l.info("Sessions up for recycling: %s", str(recycle))
+            l.info("Sessions up for recycling: %s", str(recycle.keys()))
             # Update the status of the system
             jobs = [gevent.spawn(self._status_update(ip)) for ip in self.servers]
             gevent.joinall(jobs)
@@ -223,11 +223,13 @@ class Manager():
             if active:
                 # Check for active sessions with no active vrde connections
                 for sid, session in active.items():
-                    if not any([machine['active'] for machine in session['machines']]):
+                    if not any([machine['vrde_active'] for machine in session['machines']]):
                         if sid not in recycle:
+                            l.debug("Adding to recycle, sid: %s", sid)
                             recycle[sid] = time.time()
                     else:
                         if sid in recycle:
+                            l.debug("Session is now active, removing from recycle: %s", sid)
                             del recycle[sid]
 
             # Check if any sessions have exceeded the delay

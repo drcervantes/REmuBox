@@ -138,14 +138,23 @@ def update_server(ip, **kwargs):
         server[k] = v
     server.save()
 
-def update_machine_status(ip, session_id, **kwargs):
+def update_machines(ip, session_id, data):
     server = Server.objects(ip=ip).first()
     machines = server.sessions[session_id].machines
-    if machines:
-        for m in machines:
-            for k, v in kwargs.items():
-                m[k] = v
-        server.save()
+
+    # We want to replace any hyphens in the dictionary keys
+    # to underscores to match the model
+    for m in data:
+        for k in m:
+            if '-' in k:
+                m[k.replace('-', '_')] = m.pop(k)
+
+    for i, m in enumerate(machines):
+        l.debug(" ... updating machine: %s", m["name"])
+        for k, v in data[i].items():
+            l.debug(" ... %s = %s", k, str(v))
+            m[k] = v
+    server.save()
 
 def update_workshop(oid, **kwargs):
     workshop = Workshop.objects(id=oid).first()
@@ -190,7 +199,7 @@ def insert_session(ip, sid, name, password):
 def insert_machine(ip, sid, name, port):
     server = Server.objects(ip=ip).first()
     session = server.sessions[sid]
-    session.machines.append(Machine(name=name, port=port, active=False))
+    session.machines.append(Machine(name=name, port=port))
     session.save()
 
 def remove_session(ip, session_id):

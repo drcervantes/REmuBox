@@ -13,6 +13,7 @@
         padding-left: 1rem;
       }
       td {
+        width: 25%;
         padding: 1rem;
         border: 1px solid #555;
       }
@@ -66,24 +67,55 @@
               {% endif %}
             </td>
             <td>
-              <a href="/checkout/windows/{{ workshop.name }}" download="{{ workshop.display_name }}.rdp">
-                <button class="download"><i class="fa fa-windows"></i></button>
-              </a>
-              <a href="/checkout/linux/{{ workshop.name }}" download="{{ workshop.display_name }}.rdp">
-                <button class="download"><i class="fa fa-linux"></i></button>
-              </a>
+              <div id="{{ workshop.name }}_links">
+                <a href="/checkout/windows/{{ workshop.name }}" download="{{ workshop.display_name }}.rdp">
+                  <button class="download"><i class="fa fa-windows"></i></button>
+                </a>
+                <a href="/checkout/linux/{{ workshop.name }}" download="{{ workshop.display_name }}.rdp">
+                  <button class="download"><i class="fa fa-linux"></i></button>
+                </a>
+              </div>
+              <div id="{{ workshop.name }}_none" style="display:none">
+                <p>No workshops available!</p>
+              </div>
             </td>
           </tr>
           {% endfor %}
         </table>
         {% else %}
-        <a href="#" download="{{ workshop.display_name }}.rdp">
+        <p>Are you trying to reconnect to your workshop?</p>
+        <a href="/reconnect/{{ sid }}" download="reconnect.rdp">
           <button class="download">Reconnect</button>
         </a>
+        <p>Otherwise, you'll be able to start a new workshop shortly.</p>
         {% endif %}
       </div>
     </section>
 
+    <script type="text/javascript" src="{{ url_for('static', filename='socket.io.js') }}"></script>
+    <script>
+      var socket = io.connect("http://" + window.location.hostname );
+
+      socket.on('connect', function() {
+        socket.emit('connected');
+      });
+
+      socket.on('counts', function(data) {
+        Object.keys(data).forEach(function(key) {
+          console.log(key + " " + data[key]);
+          {% for workshop in workshops %}
+          if (data["{{ workshop.name }}"] == 0) {
+            document.getElementById("{{ workshop.name }}_links").style.display = "none";
+            document.getElementById("{{ workshop.name }}_none").style.display = "block";
+          }
+          else {
+            document.getElementById("{{ workshop.name }}_links").style.display = "block";
+            document.getElementById("{{ workshop.name }}_none").style.display = "none";
+          }
+          {% endfor %}
+        });
+      });
+    </script>
     <script type="text/javascript" src="{{ url_for('static', filename='vendor.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='bundle.js') }}"></script>
   </body>

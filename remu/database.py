@@ -3,8 +3,9 @@ import logging
 import time
 
 from remu.models import Server, Workshop, Session, User, Machine
+from remu.settings import config
 
-l = logging.getLogger('default')
+l = logging.getLogger(config["REMU"]["logger"])
 
 def session_exists(sid):
     for server in Server.objects():
@@ -100,23 +101,30 @@ def session_count(ip, check_available=False):
             count += 1
     return count
 
-def session_count_by_workshop(ip, name, check_available=False):
+def session_count_by_workshop(workshop, ip=None, available=False):
     """
     Returns the current number of sessions for the specified workshop.
     """
-    server = Server.objects(ip=ip).first()
     count = 0
+    servers = (Server.objects(ip=ip) if ip else Server.objects())
 
-    if not check_available:
-        for dummy, session in server.sessions.items():
-            if session.workshop.name == name:
-                count += 1
-        return count
+    for server in servers:
+        if not available:
+            for dummy, session in server.sessions.items():
+                if session.workshop.name == workshop:
+                    count += 1
+        else:
+            for s_id, session in server.sessions.items():
+                if session.available and session.workshop.name == workshop:
+                    count += 1
 
-    for s_id, session in server.sessions.items():
-        if session['available'] and session.workshop['name'] == name:
-            count += 1
     return count
+
+def session_to_workshop_count(available=False):
+    counts = {}
+    for w in Workshop.objects():
+        counts[w.name] = session_count_by_workshop(w.name, available=available)
+    return counts
 
 def update_session(ip, session_id, available):
     """Update an existing session in a server document."""
@@ -150,9 +158,7 @@ def update_machines(ip, session_id, data):
                 m[k.replace('-', '_')] = m.pop(k)
 
     for i, m in enumerate(machines):
-        l.debug(" ... updating machine: %s", m["name"])
         for k, v in data[i].items():
-            l.debug(" ... %s = %s", k, str(v))
             m[k] = v
     server.save()
 

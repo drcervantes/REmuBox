@@ -44,7 +44,7 @@ def index():
         else:
             sid = session["sid"]
 
-    return render_template("index.html", workshops=workshops, sid=sid)
+    return render_template("index.html", sid=sid, workshops=workshops)
 
 @user_bp.route('/checkout/<path:os_type>/<path:workshop>')
 def checkout(os_type, workshop):
@@ -127,7 +127,7 @@ def home():
                 machine['name'] = machine['name'][:machine['name'].rfind('_')]
                 machine['port'] = ("-" if machine['port'] == 1 else machine['port'])
 
-    return render_template('home.html', server_data=data)
+    return render_template('home.html', server_data=data, counts=db.session_to_workshop_count())
 
 @admin_bp.route('/login', methods=['GET', 'POST'])
 def login():

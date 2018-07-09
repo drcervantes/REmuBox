@@ -5,6 +5,22 @@
   <div id="mainContent">
     <div class="full-container">
 
+      <div class="bgc-white bd bdrs-3 p-20 mB-20">
+        <div class="row">
+          <div class="col-sm-6">
+            <h4 class="c-grey-900 mB-10">Session Counts per Workshop</h4>
+          </div>
+        </div>
+        {% for entry in counts.items()|batch(2, (' ', ' ')) %}
+        <div class="row">
+          {% for name, count in entry %}
+          <div class="col-sm-2">{{ name|replace('_',' ') }}</div>
+          <div class="col-sm-2">{{ count }}</div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+
       {% for server in server_data %}
       <div class="bgc-white bd bdrs-3 p-20 mB-20">
         <div class="row">

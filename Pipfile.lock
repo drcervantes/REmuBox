@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "272a311f5971203999061fbdd27048c0bb645ed9dda9bbc7971f7ac598d590c8"
+            "sha256": "62e53f60b6ed1373345c59fbb40b82e23d5ee9e59025290afe0830b2f76f397e"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -288,6 +288,21 @@
                 "sha256:f7f309ebbda39fb00ec28f311e90b8ec9def924c41b658c45d6ab8077aadece8"
             ],
             "version": "==3.7.0"
+        },
+        "python-engineio": {
+            "hashes": [
+                "sha256:abf0d11098643eb1278d2db4dfbd13c0fe3cbfa99315572fd1c223277df62f2e",
+                "sha256:d35c50db73bf372f82975dc87f18f1cbfab7d5bed2dfc2553ae784579502a461"
+            ],
+            "version": "==2.2.0"
+        },
+        "python-socketio": {
+            "hashes": [
+                "sha256:3513110bc14db4c961c33af51169705bbaeead380ecafbe845275ac8c6f9395f",
+                "sha256:bde24ef6132a3c2e1b24e77847b31d331abdf8da8c711f0ef9cee4785000e023"
+            ],
+            "index": "pypi",
+            "version": "==2.0.0"
         },
         "pyvbox": {
             "hashes": [

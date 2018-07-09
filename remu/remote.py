@@ -8,7 +8,7 @@ import ast
 
 from remu.settings import config
 
-l = logging.getLogger(__name__)
+l = logging.getLogger(config["REMU"]["logger"])
 
 class RemoteComponent():
     def __init__(self, ip, port, modules):

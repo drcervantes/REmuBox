@@ -10,7 +10,7 @@ import remu.util
 import remu.remote
 import remu.server
 
-l = logging.getLogger('default')
+l = logging.getLogger(config["REMU"]["logger"])
 
 class Manager():
     """ TODO """
@@ -31,13 +31,13 @@ class Manager():
             if s["ip"] != "127.0.0.1":
                 self.register_remote_server(s["ip"], s["port"])
 
-        self.monitor_thread = gevent.spawn(self.monitor_service)
-        # gevent.spawn(self.test)
+        # Start sessions for min instances
+        l.info("Starting minimum instances...")
+        for w in db.get_all_workshops():
+            for dummy in range(w["min_instances"]):
+                self.start_workshop(w["name"], True)
 
-    def test(self):
-        time.sleep(10)
-        self.start_workshop('Route_Hijacking')
-        self.start_workshop('Route_Hijacking')
+        self.monitor_thread = gevent.spawn(self.monitor_service)
 
     def clean_up(self):
         l.info(" ... Manager cleaning up")
@@ -53,7 +53,7 @@ class Manager():
         modules = [remu.server.WorkshopManager, remu.server.PerformanceMonitor]
         self.servers[ip] = remu.remote.RemoteComponent(ip, port, modules)
 
-    def start_workshop(self, workshop):
+    def start_workshop(self, workshop, available=False):
         """
         Start a new session for a workshop participant.
         Returns a string containing a session id, the VRDE ports for the workshop unit,
@@ -70,10 +70,12 @@ class Manager():
         l.info("Load balancer selected: %s", server)
 
         # Get the session
-        session_id = self.obtain_session(server, workshop)
+        session_id = self.obtain_session(server, workshop, available)
         l.info("Using session: %s", session_id)
 
-        self._run_workshop(server, workshop, session_id)
+        self._build_workshop(server, workshop, session_id)
+        if not available:
+            self.servers[server].start_unit(sid=session_id)
 
         vrde_ports = db.get_vrde_ports(session_id)
 
@@ -96,6 +98,8 @@ class Manager():
             2. The server with the least amount of running sessions.
         """
 
+        l.debug("Load balance for a %s workshop", workshop)
+
         # Check if any servers have an available session
         servers = db.get_all_servers()
         if not bool(servers):
@@ -103,36 +107,60 @@ class Manager():
             return None
 
         for server in servers:
-            if db.session_count_by_workshop(server['ip'], workshop, True) > 0:
-                # TODO: Check if enough resources are available
+            l.debug(" ... checking for available session at server: %s", server["ip"])
+
+            count = db.session_count_by_workshop(workshop, server['ip'], True)
+            l.debug(" ... found %d available", count)
+
+            if count > 0:
                 return server['ip']
 
-        # Check if we can spawn a new session
+        l.debug(" ... checking if we can spawn a new session")
+
         instances = 0
         for server in servers:
-            instances += db.session_count_by_workshop(server['ip'], workshop)
+            instances += db.session_count_by_workshop(workshop, server['ip'])
+        l.debug(" ... total instances for %s: %d", workshop, instances)
 
         max_instances = db.get_workshop(name=workshop)['max_instances']
+        l.debug(" ... max instances allowed: %d", max_instances)
         if instances >= max_instances:
             l.error("Maximum number of instances met or exceeded.")
             return None
 
         # Find server with least amount of workshops running
+        l.debug(" ... selecting server with least amount of workshops running")
         sessions = 9999
-        min_ip = ""
-        for server in servers:
+        min_ip = 0
+        for i, server in enumerate(servers):
             count = db.session_count(server['ip'])
             if count < sessions:
                 sessions = count
-                min_ip = server['ip']
-        return min_ip
+                min_ip = i
 
-    def obtain_session(self, server, workshop):
+        # Finally ensure the server has enough resources
+        server = servers[i]
+        try:
+            if server['mem'] < float(config['REMU']['mem_limit']) and \
+               server['hdd'] < float(config['REMU']['hdd_limit']):
+                return server['ip']
+        except KeyError:
+            l.warn(" ... making decision without hardware check!")
+            return server['ip']
+
+        l.error(" ... unable to find a suitable server!")
+        return None
+
+    def obtain_session(self, server, workshop, available):
         """Obtain a session for the specified workshop."""
         session = db.get_available_session(server, workshop)
+
         if session is None:
             session = self._create_session(server, workshop)
-        db.update_session(server, session, False)
+
+        if not available:
+            db.update_session(server, session, available)
+
         return session
 
     def _create_session(self, server, workshop):
@@ -150,7 +178,7 @@ class Manager():
     def _create_password(cls):
         return remu.util.rand_str(int(config['REMU']['pass_len']))
 
-    def _run_workshop(self, ip, workshop, session_id):
+    def _build_workshop(self, ip, workshop, session_id):
         """ TODO """
         server = self.servers[ip]
         session = db.get_session(ip, session_id)
@@ -161,8 +189,6 @@ class Manager():
 
             for machine in server.unit_to_str(sid=session_id):
                 db.insert_machine(ip, session_id, machine['name'], machine['port'])
-
-        server.start_unit(sid=session_id)
 
     def stop_workshop(self, session_id):
         l.info("Stopping session: %s", session_id)
@@ -182,7 +208,7 @@ class Manager():
 
         # Ensure the minimum amount of sessions are met
         if instances < workshop['min_instances']:
-            new_sid = self._create_session(ip, workshop)
+            new_sid = self._create_session(ip, workshop['name'])
             server.restore_unit(sid=session_id, new_sid=new_sid)
             for machine in server.unit_to_str(new_sid):
                 db.insert_machine(ip, new_sid, machine['name'], machine['port'])
@@ -211,6 +237,8 @@ class Manager():
         interval = int(config['REMU']['polling_interval'])
 
         while True:
+            gevent.sleep(interval)
+
             l.info("Sessions up for recycling: %s", str(recycle.keys()))
             # Update the status of the system
             jobs = [gevent.spawn(self._status_update(ip)) for ip in self.servers]
@@ -239,5 +267,3 @@ class Manager():
                     if now >= stime + delay:
                         self.stop_workshop(sid)
                         del recycle[sid]
-
-            time.sleep(interval)

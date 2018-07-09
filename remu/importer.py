@@ -9,7 +9,7 @@ import virtualbox
 
 from remu.settings import config
 
-l = logging.getLogger('default')
+l = logging.getLogger(config["REMU"]["logger"])
 
 """
 TODO: vrde port is checked by the machine configuration and not the xml

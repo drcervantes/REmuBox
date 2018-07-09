@@ -6,7 +6,7 @@ import logging
 import remu.util
 from remu.settings import config
 
-l = logging.getLogger('default')
+l = logging.getLogger(config["REMU"]["logger"])
 
 class Nginx():
     """ TODO """
@@ -49,13 +49,13 @@ class Nginx():
                 upstream = remu.util.rand_str(10)
                 address = server + ":" + str(port)
 
-                new_map = session_id + " " + upstream + ";\n"
+                new_map = session_id + " " + upstream + ";"
                 l.info("New mapping: %s", new_map)
-                mappings.append(new_map)
+                mappings.append(new_map + '\n')
                 
-                new_upstream = "upstream " + upstream + " {server " + address + ";}\n"
+                new_upstream = "upstream " + upstream + " {server " + address + ";}"
                 l.info("New upstream: %s", new_upstream)
-                upstreams.append(new_upstream)
+                upstreams.append(new_upstream + '\n')
                 
             self.write_conf(map_conf, mappings)
             self.write_conf(upstream_conf, upstreams)

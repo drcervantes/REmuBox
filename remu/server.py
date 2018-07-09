@@ -1,7 +1,3 @@
-"""
-Notes:
-    VIRTUALBOX DID NOT IMPLEMENT DELETE SNAPSHOT WTF
-"""
 import logging
 import socket
 import subprocess
@@ -16,7 +12,7 @@ from remu.importer import Templates
 from remu.util import rand_str
 from remu.settings import config
 
-l = logging.getLogger('default')
+l = logging.getLogger(config["REMU"]["logger"])
 
 class WorkshopManager():
     def __init__(self):
@@ -28,6 +24,16 @@ class WorkshopManager():
 
     def clean_up(self):
         l.info(" ... WorkshopManager cleaning up")
+
+        sessions = []
+        for g in self.vbox.machine_groups:
+            if "Units" in g:
+                sessions.append(g.split("/")[-1])
+
+        if bool(sessions):
+            for sid in sessions:
+                self.remove_unit(sid)
+
         del self.vbox
 
     def _set_group(self, machine, group):
@@ -74,17 +80,15 @@ class WorkshopManager():
             return sock.getsockname()[1]
 
     def _get_all_units_by_workshop(self, workshop_name):
-        group_list = list(self.vbox.machine_groups)
         units = []
-        for group in group_list:
+        for group in self.vbox.machine_groups:
             if group.find(workshop_name + "-Units") >= 0:
                 units.append(group)
         return units
 
     def _get_unit(self, session):
         """Get a workshop unit's group path by session id."""
-        groups = list(self.vbox.machine_groups)
-        for g in groups:
+        for g in self.vbox.machine_groups:
             if g.find(session) >= 0:
                 return g
         return None
@@ -273,6 +277,7 @@ class WorkshopManager():
                     session.machine.name = new_name
                     l.debug(" ... new machine name: %s", new_name)
 
+                    session.machine.save_settings()
                     session.unlock_machine()
 
                     # Change the session id in the group name

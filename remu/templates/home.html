@@ -65,6 +65,7 @@
                   <th scope="col">Machines</th>
                   <th scope="col">VRDE Port</th>
                   <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -91,8 +92,11 @@
                     <span class="badge bgc-green-50 c-green-700 p-10 lh-0 tt-c badge-pill">Running</span>
                   {% endif %}
                   </td>
-                  
-
+                  <td>
+                    <a href="{{ url_for('.kill_session', sid=id) }}" alt="Remove">
+                      <button class="download action"><i class="fa fa-remove"></i></button>
+                    </a>
+                  </td>
                 </tr>
                 {% endfor %}
 

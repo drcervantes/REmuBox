@@ -158,7 +158,7 @@ def sio_counts(sio):
 
 def parse_arguments():
     """
-    Handle command-line arguments.
+    Parse command-line arguments through Python's argparse.
     """
     parser = argparse.ArgumentParser(description="Remote Emulation Sandbox")
     parser.add_argument(
@@ -198,48 +198,64 @@ def parse_arguments():
     )
     return parser.parse_args()
 
+def setup_logging():
+    """
+    Initializes the logging module with a custom configuration.
+    """
+    log_file = config['REMU']['log_file']
+    if not os.path.exists(log_file):
+        with open(log_file, 'w+'):
+            pass
 
+    logging.config.dictConfig({
+        'version': 1,
+        'formatters': {
+            'default': {
+                'format': '%(asctime)s - %(levelname)s - %(message)s',
+                'datefmt': '%Y-%m-%d %H:%M:%S'
+            }
+        },
+        'handlers': {
+            'console': {
+                'level': 'DEBUG',
+                'class': 'logging.StreamHandler',
+                'formatter': 'default',
+                'stream': 'ext://sys.stdout'
+            },
+            'file': {
+                'level': 'DEBUG',
+                'class': 'logging.handlers.RotatingFileHandler',
+                'formatter': 'default',
+                'filename': log_file,
+                'maxBytes': 1024
+            }
+        },
+        'loggers': {
+            config["REMU"]["logger"]: {
+                'level': 'DEBUG',
+                'handlers': ['console', 'file']
+            }
+        },
+        'disable_existing_loggers': True
+    })
+
+    return logging.getLogger(config["REMU"]["logger"])
+
+# Set our logging configuration for the system.
+l = setup_logging()
+
+# Handle the command-line arguments.
 args = parse_arguments()
 
-log_file = config['REMU']['log_file']
-if not os.path.exists(log_file):
-    with open(log_file, 'w+'):
-        pass
+# If no module options were provided through the command-line then
+# enable all modules.
+if not any([args.manager, args.server, args.nginx, args.web]):
+    args.manager = True
+    args.server = True
+    args.nginx = True
+    args.web = True
 
-logging.config.dictConfig({
-    'version': 1,
-    'formatters': {
-        'default': {
-            'format': '%(asctime)s - %(levelname)s - %(message)s',
-            'datefmt': '%Y-%m-%d %H:%M:%S'
-        }
-    },
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'default',
-            'stream': 'ext://sys.stdout'
-        },
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'formatter': 'default',
-            'filename': log_file,
-            'maxBytes': 1024
-        }
-    },
-    'loggers': {
-        config["REMU"]["logger"]: {
-            'level': 'DEBUG',
-            'handlers': ['console', 'file']
-        }
-    },
-    'disable_existing_loggers': True
-})
-
-l = logging.getLogger(config["REMU"]["logger"])
-
+# Establish a connection to mongod for the module that require it.
 if args.manager or args.web:
     import mongoengine
     mongoengine.connect(
@@ -248,7 +264,7 @@ if args.manager or args.web:
         port=int(config['DATABASE']['port'])
     )
 
-# Use the arguments to determine which modules to run
+# Use the arguments to determine which modules to run.
 modules = []
 
 nginx = None
@@ -278,7 +294,6 @@ if args.manager:
     manager = Manager(server, nginx, monitor)
     modules.append(manager)
 
-
 # Create our flask application
 application = create_app()
 
@@ -292,11 +307,13 @@ if args.web:
     counts = gevent.spawn(sio_counts, sockio)
 
 try:
-    l.info("+--------------------------------------------------+")
-    l.info("Service running. Use Ctrl-C to terminate gracefully.")
-    l.info("+--------------------------------------------------+")
+    l.info("+------------------------------------------------------+")
+    l.info("| Service running. Use Ctrl-C to terminate gracefully. |")
+    l.info("+------------------------------------------------------+")
+
     service = wsgi.WSGIServer((config['REMU']['address'], int(config['REMU']['port'])), wrap, log=None)
     service.serve_forever()
+
 except (KeyboardInterrupt, SystemExit):
     l.info('Shutting down...')
 

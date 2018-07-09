@@ -226,6 +226,16 @@ def edit_workshop(oid):
             max_instances=form.maxi.data,
             enabled=form.enabled.data
         )
+        
+        if bool(form.materials.data[0]):
+            base_dir = os.path.join(config["REMU"]["workshops"], form.name.data, "materials")
+            if not os.path.exists(base_dir):
+                os.mkdir(base_dir)
+
+            for doc in form.materials.data:
+                secured_name = secure_filename(doc.filename)
+                doc.save(os.path.join(base_dir, secured_name))
+
         return redirect(url_for('admin.workshops'))
     else:
         workshop = db.get_workshop(id=oid)
@@ -241,17 +251,30 @@ def edit_workshop(oid):
         else:
             mats = None
 
-    return render_template('edit_workshop.html', form=form, materials=mats)
+    return render_template('edit_workshop.html', form=form, materials=mats, oid=oid)
 
-@admin_bp.route('/workshops/edit/<path:name>/<path:material>', methods=['GET', 'POST'])
+@admin_bp.route('/workshops/edit/<path:oid>/<path:material>', methods=['GET', 'POST'])
 @login_required
-def remove_material(name, material):
-    file = os.path.join(config["REMU"]["workshops"], name, "materials", material)
-    os.remove(file)
-    return redirect(url_for('admin.edit_workshop', name=name))
+def remove_material(oid, material):
+    workshop = db.get_workshop(id=oid)
+    file = os.path.join(config["REMU"]["workshops"], workshop["name"], "materials", material)
+
+    try:
+        os.remove(file)
+    except os.error:
+        l.exception("Unable to remove workshop (%s) material: %s", workshop["name"], file)
+
+    return redirect(url_for('admin.edit_workshop', oid=oid))
 
 @admin_bp.route('/workshops/remove/<path:oid>', methods=['GET', 'POST'])
 @login_required
 def remove_workshop(oid):
     db.remove_workshop(oid)
     return redirect(url_for('admin.workshops'))
+
+@admin_bp.route('/kill_session/<path:sid>', methods=['GET', 'POST'])
+@login_required
+def kill_session(sid):
+    manager = current_app.config['MANAGER']
+    manager.stop_workshop(sid)
+    return redirect(url_for('admin.home'))

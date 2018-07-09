@@ -1,10 +1,5 @@
 {% extends "base.html" %}
 
-<!-- 
-    # Manage Servers
-    # Add new
-    # 127.0.0.1 9000 Edit Remove -->
-
 {% block body %}        
 <main class="main-content bgc-grey-100">
   <div id="mainContent">
@@ -18,7 +13,7 @@
                 Add a Server
               </button>
             </a>
-            <table class="table">
+            <table class="table mT-10">
               <tr>
                 <th>Address</th>
                 <th>Port</th>
@@ -30,10 +25,10 @@
                 <td>{{ server.port }}</td>
                 <td>
                   <a href="{{ url_for('.edit_server', address=server.ip) }}" alt="Edit">
-                    <button class="download"><i class="fa fa-pencil"></i></button>
+                    <button class="download action"><i class="fa fa-pencil"></i></button>
                   </a>
                   <a href="{{ url_for('.remove_server', address=server.ip) }}" alt="Edit">
-                    <button class="download"><i class="fa fa-remove"></i></button>
+                    <button class="download action"><i class="fa fa-remove"></i></button>
                   </a>
                 </td>
               </tr>

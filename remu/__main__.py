@@ -35,6 +35,9 @@ def create_app():
     """
     Setup the Flask application to handle any remote service routine calls. This includes
     interaction between the modules when run remotely and the front-end.
+
+    Returns:
+        Flask object.
     """
     app = flask.Flask(__name__)
 
@@ -68,7 +71,14 @@ def create_app():
 
     @app.route('/<path:path>')
     def catch_all(path):
-        """ TODO """
+        """
+        Routing method to handle any path not specifically defined in
+        the user and admin blueprints. This is useful as it allows us
+        to decrypt the url prior to handling the request.
+
+        Returns:
+            str. The view (or result) to return to the caller.
+        """
         if "favicon.ico" in path:
             return ""
 
@@ -126,6 +136,9 @@ def create_app():
     return app
 
 def create_sio():
+    """
+    Initialize the socketio server. 
+    """
     sio = socketio.Server()
 
     @sio.on('connected')
@@ -135,13 +148,18 @@ def create_sio():
     return sio
 
 def sio_counts(sio):
+    """
+    Task which regularly emits session counts to the end-users.
+    """
     while True:
         data = db.session_to_workshop_count(True)
         sio.emit('counts', data)
-        gevent.sleep(5)
+        gevent.sleep(3)
 
 def parse_arguments():
-    """ TODO """
+    """
+    Handle command-line arguments.
+    """
     parser = argparse.ArgumentParser(description="Remote Emulation Sandbox")
     parser.add_argument(
         "--config",
@@ -277,7 +295,7 @@ try:
     l.info("+--------------------------------------------------+")
     l.info("Service running. Use Ctrl-C to terminate gracefully.")
     l.info("+--------------------------------------------------+")
-    service = wsgi.WSGIServer((config['REMU']['interface'], int(config['REMU']['port'])), wrap, log=None)
+    service = wsgi.WSGIServer((config['REMU']['address'], int(config['REMU']['port'])), wrap, log=None)
     service.serve_forever()
 except (KeyboardInterrupt, SystemExit):
     l.info('Shutting down...')

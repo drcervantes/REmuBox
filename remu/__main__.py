@@ -20,6 +20,7 @@ import argparse
 import ast
 import os.path
 import flask_login
+import socketio
 
 import remu.database as db
 from remu.nginx import Nginx
@@ -71,9 +72,13 @@ def create_app():
         if "favicon.ico" in path:
             return ""
 
-        url = urlparse.urlparse(flask.request.url)
-        path = url.path[1:].encode()
-        path = fern.decrypt(path).decode()
+        try:
+            url = urlparse.urlparse(flask.request.url)
+            path = url.path[1:].encode()
+            path = fern.decrypt(path).decode()
+        except fernet.InvalidToken:
+            l.error("Unable to decrpyt url: %s", url.path)
+            return flask.render_template("404.html")
 
         l.debug("Received path: %s", url.path)
 
@@ -119,6 +124,21 @@ def create_app():
         return None
 
     return app
+
+def create_sio():
+    sio = socketio.Server()
+
+    @sio.on('connected')
+    def connected(sid, environ):
+        l.debug("New client connected to front-end")
+
+    return sio
+
+def sio_counts(sio):
+    while True:
+        data = db.session_to_workshop_count(True)
+        sio.emit('counts', data)
+        gevent.sleep(5)
 
 def parse_arguments():
     """ TODO """
@@ -192,15 +212,15 @@ logging.config.dictConfig({
         }
     },
     'loggers': {
-        'default': {
+        config["REMU"]["logger"]: {
             'level': 'DEBUG',
             'handlers': ['console', 'file']
         }
     },
-    'disable_existing_loggers': False
+    'disable_existing_loggers': True
 })
 
-l = logging.getLogger('default')
+l = logging.getLogger(config["REMU"]["logger"])
 
 if args.manager or args.web:
     import mongoengine
@@ -248,14 +268,25 @@ if args.web:
     application.register_blueprint(user_bp)
     application.register_blueprint(admin_bp, url_prefix='/admin')
 
+    sockio = create_sio()
+    wrap = socketio.Middleware(sockio, application)
+
+    counts = gevent.spawn(sio_counts, sockio)
+
 try:
     l.info("+--------------------------------------------------+")
     l.info("Service running. Use Ctrl-C to terminate gracefully.")
     l.info("+--------------------------------------------------+")
-    service = wsgi.WSGIServer((config['REMU']['interface'], int(config['REMU']['port'])), application)
+    service = wsgi.WSGIServer((config['REMU']['interface'], int(config['REMU']['port'])), wrap, log=None)
     service.serve_forever()
 except (KeyboardInterrupt, SystemExit):
     l.info('Shutting down...')
+
+    # Stop emitting to clients
+    try:
+        counts.kill()
+    except Exception:
+        pass
 
     if service.started:
         service.close()

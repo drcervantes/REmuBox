@@ -1,0 +1,54 @@
+<xml>
+    <workshop-settings>
+
+        <!-- Required: The name of the workshop -->
+        <name>
+            Pivoting_Attack
+        </name>
+
+        <!-- Required: The name of the appliance to be imported -->
+        <appliance>
+            kali-2016.2-debian_ecel_pivot.ova
+        </appliance>
+
+        <appliance>
+            kali-debian-32-topo-pivot.ova
+        </appliance>
+
+        <appliance>
+            TinyLinux_plus.ova
+        </appliance>
+
+        <vm>
+            <!-- Required: The name of the vm that will be cloned -->
+            <name>
+                kali-2016.2-debian_ecel_pivot
+            </name>
+
+            <!-- Internal network elements should have different names
+                 i.e. intnet0 intnet1 -->
+            <intnet0>
+                test
+            </intnet0>
+        </vm>
+
+        <vm>
+            <name>
+                kali-debian-32-topo-pivot
+            </name>
+            <intnet0>
+                test
+            </intnet0>
+        </vm>
+
+        <vm>
+            <name>
+                TinyLinux_plus
+            </name>
+            <intnet0>
+                test
+            </intnet0>
+        </vm>
+
+    </workshop-settings>
+</xml>

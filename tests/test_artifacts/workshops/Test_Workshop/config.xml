@@ -1,0 +1,32 @@
+<xml>
+    <workshop-settings>
+
+        <!-- Required: The name of the workshop -->
+        <name>
+            Test_Workshop
+        </name>
+
+        <!-- Required: The name of the appliance to be imported -->
+        <appliance>
+            TinyCore.ova
+        </appliance>
+
+        <vm>
+            <!-- Required: The name of the vm that will be cloned -->
+            <name>
+                TinyCore
+            </name>
+
+            <!-- Internal network elements should have different names
+                 i.e. intnet0 intnet1 -->
+            <intnet0>
+                test0
+            </intnet0>
+
+            <intnet1>
+                test1
+            </intnet1>
+        </vm>
+
+    </workshop-settings>
+</xml>

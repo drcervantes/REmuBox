@@ -11,48 +11,66 @@ from remu.settings import config
 
 l = logging.getLogger(config["REMU"]["logger"])
 
-"""
-TODO: vrde port is checked by the machine configuration and not the xml
-"""
+
 class Templates():
     def __init__(self, vbox=None):
         self.vbox = vbox
         self.path = config['REMU']['workshops']
+
 
     def __enter__(self):
         if not self.vbox:
             self.vbox = virtualbox.VirtualBox()
         return self
 
+
     def __exit__(self, *args):
         del self.vbox
 
+
     def _parse_config(self, config_file):
-        tree = et.parse(config_file)
-        root = tree.getroot().find("workshop-settings")
+        try:
+            tree = et.parse(config_file)
+            root = tree.getroot().find("workshop-settings")
 
-        # Create a dictionary of all elements in the root
-        workshop = {child.tag:child.text.strip() for child in root.getchildren() if not bool(child.getchildren())}
-        workshop["appliance"] = [child.text.strip() for child in root.findall("appliance")]
+            # Create a dictionary of all elements in the root
+            workshop = {child.tag:child.text.strip() for child in root.getchildren() if not bool(child.getchildren())}
+            workshop["appliance"] = [child.text.strip() for child in root.findall("appliance")]
 
-        # Create a list of dictionaries containing the elements within the vm tag
-        vms = [{child.tag:child.text.strip() for child in vm.getchildren()} for vm in root.findall("vm")]
-        workshop["vms"] = vms
+            # Create a list of dictionaries containing the elements within the vm tag
+            vms = [{child.tag:child.text.strip() for child in vm.getchildren()} for vm in root.findall("vm")]
+            workshop["vms"] = vms
 
-        return workshop
+            return workshop
+
+        except IOError:
+            l.exception("No config.xml for workshop found!")
+            raise
+
 
     def get_templates(self):
-        workshops = []
+        """
+        Parse the configurations for each workshop contained in the workshops
+        directory defined in the config.ini file.
+        """
 
-        for workshop_dir in os.listdir(self.path):
-            config_path = os.path.join(self.path, workshop_dir, "config.xml")
-            workshop = self._parse_config(config_path)
+        try:
+            workshops = []
 
-            # Get the full path of the appliance for importing later
-            workshop["appliance"] = [os.path.join(self.path, workshop_dir, app) for app in workshop["appliance"]]
-            workshops.append(workshop)
+            for workshop_dir in os.listdir(self.path):
+                config_path = os.path.join(self.path, workshop_dir, "config.xml")
+                workshop = self._parse_config(config_path)
 
-        return workshops
+                # Get the full path of the appliance for importing later
+                workshop["appliance"] = [os.path.join(self.path, workshop_dir, app) for app in workshop["appliance"]]
+                workshops.append(workshop)
+
+            return workshops
+
+        except IOError:
+            l.exception("No workshop directory found!")
+            raise
+
 
     def _progress_bar(self, progress):
         try:
@@ -66,6 +84,7 @@ class Templates():
             if progress.cancelable:
                 l.error("Cancelling task...")
                 progress.cancel()
+
 
     def _import_template(self, template):
         l.info("Importing template: %s", template["name"])
@@ -94,14 +113,18 @@ class Templates():
                     progress.wait_for_completion()
                     session.unlock_machine()
             l.info("%s imported successfully", template["name"])
+
         except Exception:
             l.exception("Failed to import %s template!", template["name"])
+            raise
+
 
     def import_new(self):
         """
         Imports all appliances from the templates directory if they are not already imported
         into VirtualBox.
         """
+
         # Grab templates already imported
         existing_templates = []
         group_list = list(self.vbox.machine_groups)
@@ -110,6 +133,7 @@ class Templates():
             if idx > 0:
                 existing_templates.append(group[1:idx])
 
+        # Exclude templates that are already imported into virtualbox
         templates = [t for t in self.get_templates() if t["name"] not in existing_templates]
 
         for t in templates:

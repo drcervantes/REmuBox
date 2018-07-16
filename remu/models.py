@@ -9,29 +9,29 @@ from flask_login import UserMixin
 """
 
 class Workshop(Document):
-    name = StringField(unique=True)
+    name = StringField(unique=True, required=True)
     description = StringField()
-    enabled = BooleanField()
-    min_instances = IntField()
-    max_instances = IntField()
+    enabled = BooleanField(required=True)
+    min_instances = IntField(min_value=0, required=True)
+    max_instances = IntField(min_value=0, required=True)
 
 class Machine(EmbeddedDocument):
     name = StringField()
-    port = IntField()
+    port = IntField(min_value=1024, max_value=65535)
     state = IntField(default=1)
     vrde_active = BooleanField(default=False)
     vrde_enabled = BooleanField(default=False)
 
 class Session(EmbeddedDocument):
-    workshop = ReferenceField(Workshop)
+    workshop = ReferenceField(Workshop, required=True)
     machines = ListField(EmbeddedDocumentField(Machine))
-    password = StringField()
-    available = BooleanField()
+    password = StringField(required=True)
+    available = BooleanField(required=True)
     start_time = FloatField()
 
 class Server(Document):
-    ip = StringField(unique=True)
-    port = IntField()
+    ip = StringField(unique=True, required=True)
+    port = IntField(min_value=1024, max_value=65535, required=True)
     sessions = MapField(EmbeddedDocumentField(Session))
     cpu = FloatField()
     hdd = FloatField()

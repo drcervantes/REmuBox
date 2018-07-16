@@ -103,7 +103,9 @@ def session_count(ip, check_available=False):
 
 def session_count_by_workshop(workshop, ip=None, available=False):
     """
-    Returns the current number of sessions for the specified workshop.
+    Returns the current number of available or unavailable sessions 
+    for the specified workshop.  If no server is specified, then
+    all servers will be counted.
     """
     count = 0
     servers = (Server.objects(ip=ip) if ip else Server.objects())
@@ -120,111 +122,272 @@ def session_count_by_workshop(workshop, ip=None, available=False):
 
     return count
 
+
 def session_to_workshop_count(available=False):
+    """
+    Obtain a dictionary mapping workshop names to the amount of available
+    or unavailable sessions for each workshop.
+    """
     counts = {}
+
     for w in Workshop.objects():
         counts[w.name] = session_count_by_workshop(w.name, available=available)
+
     return counts
 
-def update_session(ip, session_id, available):
-    """Update an existing session in a server document."""
-    server = Server.objects(ip=ip).first()
 
-    server.sessions[session_id]['available'] = available
-    server.save()
+def update_session(ip, sid, available):
+    """
+    Update an existing session in a server document.
+    """
 
-def update_session_ports(ip, session_id, ports):
-    """Update an existing session in a server document."""
-    server = Server.objects(ip=ip).first()
+    if not ip:
+        l.error("Cannot update server with no ip address!")
+        raise Exception
 
-    server.sessions[session_id]['ports'] = ports
-    server.save()
+    if not sid:
+        l.error("A session must have an id!")
+        raise Exception
+
+    try:
+        server = Server.objects(ip=ip).first()
+
+        server.sessions[sid]['available'] = available
+        server.save()
+
+    except Exception:
+        l.exception("Failed to update session %s", sid)
+        raise
+
 
 def update_server(ip, **kwargs):
-    server = Server.objects(ip=ip).first()
-    for k, v in kwargs.items():
-        server[k] = v
-    server.save()
+    """
+    Update a server document.
+    """
 
-def update_machines(ip, session_id, data):
-    server = Server.objects(ip=ip).first()
-    machines = server.sessions[session_id].machines
+    if not ip:
+        l.error("Cannot update server with no ip address!")
+        raise Exception
 
-    # We want to replace any hyphens in the dictionary keys
-    # to underscores to match the model
-    for m in data:
-        for k in m:
-            if '-' in k:
-                m[k.replace('-', '_')] = m.pop(k)
+    try:
+        server = Server.objects(ip=ip).first()
 
-    for i, m in enumerate(machines):
-        for k, v in data[i].items():
-            m[k] = v
-    server.save()
+        for k, v in kwargs.items():
+            server[k] = v
+
+        server.save()
+
+    except Exception:
+        l.exception("Failed to update server %s", ip)
+        raise
+
+
+def update_machines(ip, sid, data):
+    """
+    Update a machine document embedded in a session document.
+    data - list of dictionaries
+    """
+
+    if not ip:
+        l.error("Cannot update machines with no ip address!")
+        raise Exception
+
+    if not sid:
+        l.error("A session must have an id!")
+        raise Exception
+
+    try:
+        server = Server.objects(ip=ip).first()
+        machines = server.sessions[sid].machines
+
+        # We want to replace any hyphens in the dictionary keys
+        # to underscores to match the model
+        for m in data:
+            for k in m:
+                if '-' in k:
+                    m[k.replace('-', '_')] = m.pop(k)
+
+        for i, m in enumerate(machines):
+            for k, v in data[i].items():
+                m[k] = v
+
+        server.save()
+
+    except Exception:
+        l.exception("Failed to update machines for %s", sid)
+        raise
+
 
 def update_workshop(oid, **kwargs):
-    workshop = Workshop.objects(id=oid).first()
-    for k, v in kwargs.items():
-        workshop[k] = v
-    workshop.save()
+    """
+    Update a workshop document.
+    """
+
+    if not oid:
+        l.error("Cannot update workshop without id!")
+        raise Exception
+
+    try:
+        workshop = Workshop.objects(id=oid).first()
+        for k, v in kwargs.items():
+            workshop[k] = v
+        workshop.save()
+
+    except Exception:
+        l.exception("Failed to update workshop (%s)", oid)
+        raise
+
 
 def insert_server(ip, port):
-    """Insert a new server document."""
+    """
+    Insert a new server document.
+    """
+
+    if not ip:
+        l.error("Cannot insert server with no ip address!")
+        raise Exception
+
     try:
         server = Server(ip=ip, port=port)
         server.save()
-        return True
-    except Exception as exc:
-        l.exception(str(exc))
-        return False
+
+    except Exception:
+        l.exception("Failed inserting server %s:%d", ip, port)
+        raise
+
 
 def insert_workshop(name, desc, min_units, max_units, enabled):
-    """ TODO """
-    workshop = Workshop(
-        name=name,
-        description=desc,
-        min_instances=min_units,
-        max_instances=max_units,
-        enabled=enabled
-    )
-    workshop.save()
+    """
+    Insert a new workshop document.
+    """
+    if not name:
+        l.error("Cannot insert workshop with no name!")
+        raise Exception
+
+    try:
+        workshop = Workshop(
+            name=name,
+            description=desc,
+            min_instances=min_units,
+            max_instances=max_units,
+            enabled=enabled
+        )
+        workshop.save()
+
+    except Exception:
+        l.exception("Failed inserting workshop %s", name)
+        raise
+
 
 def insert_session(ip, sid, name, password):
-    """ TODO """
-    workshop = Workshop.objects(name=name).first()
-    session = Session(
-        workshop=workshop,
-        password=password,
-        available=True,
-        start_time=time.time()
-    )
-    server = Server.objects(ip=ip).first()
-    server.sessions[sid] = session
-    server.save()
+    """
+    Embed a new session document into the server document.
+    """
+
+    if not sid:
+        l.error("A session must have an id!")
+        raise Exception
+
+    if not password:
+        l.error("A session cannot have a blank password!")
+        raise Exception
+
+    try:
+        workshop = Workshop.objects(name=name).first()
+        session = Session(
+            workshop=workshop,
+            password=password,
+            available=True,
+            start_time=time.time()
+        )
+        server = Server.objects(ip=ip).first()
+
+        if sid in server.sessions:
+            l.error("Cannot insert session with duplicate id!")
+            raise Exception
+
+        server.sessions[sid] = session
+        server.save()
+
+    except Exception:
+        l.exception("Failed inserting session %s", sid)
+        raise
+
 
 def insert_machine(ip, sid, name, port):
-    server = Server.objects(ip=ip).first()
-    session = server.sessions[sid]
-    session.machines.append(Machine(name=name, port=port))
-    session.save()
+    """
+    Embed a new machine into the embedded session document.
+    """
 
-def remove_session(ip, session_id):
-    """Remove a session for the corresponding server document."""
-    server = Server.objects(ip=ip).first()
-    del server.sessions[session_id]
-    server.save()
+    if not name:
+        l.error("A machine has no name!")
+        raise Exception
+
+    try:
+        server = Server.objects(ip=ip).first()
+        session = server.sessions[sid]
+        session.machines.append(Machine(name=name, port=port))
+        session.save()
+
+    except Exception:
+        l.exception("Failed to insert machine %s into %s", name, sid)
+        raise
+
+
+def remove_session(ip, sid):
+    """
+    Remove a session for the corresponding server document.
+    """
+
+    if not ip:
+        l.error("Cannot remove session without ip!")
+        raise Exception
+
+    if not sid:
+        l.error("Cannot remove session without id!")
+        raise Exception
+
+    try:
+        server = Server.objects(ip=ip).first()
+        del server.sessions[sid]
+        server.save()
+
+    except Exception:
+        l.exception("Failed to remove session %s", sid)
+        raise
+
 
 def remove_workshop(oid):
-    """ TODO """
-    workshop = Workshop.objects(id=oid).first()
-    workshop.delete()
+    """
+    Remove a workshop document.
+    """
+
+    if not oid:
+        l.error("Cannot remove workshop without id!")
+        raise Exception
+
+    try:
+        workshop = Workshop.objects(id=oid).first()
+        workshop.delete()
+
+    except Exception:
+        l.exception("Failed to remove workshop %s", oid)
+        raise
+
 
 def remove_server(ip):
-    """ TODO """
+    """
+    Remove a server document.
+    """
+
+    if not ip:
+        l.error("Cannot remove server without ip!")
+        raise Exception
+
     try:
         server = Server.objects(ip=ip).first()
         server.delete()
-        return True
+
     except Exception:
-        l.exception("Couldn't remove server entry")
-        return False
+        l.exception("Failed to remove server %s", ip)
+        raise

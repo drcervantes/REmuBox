@@ -17,7 +17,7 @@ class Workshop(Document):
 
 class Machine(EmbeddedDocument):
     name = StringField()
-    port = IntField(min_value=1024, max_value=65535)
+    port = IntField(min_value=1, max_value=65535)
     state = IntField(default=1)
     vrde_active = BooleanField(default=False)
     vrde_enabled = BooleanField(default=False)

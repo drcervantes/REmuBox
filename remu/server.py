@@ -454,7 +454,7 @@ class PerformanceMonitor():
 
         # Get the file path to the location where new virtual machines
         # will be created by virtualbox
-        vm_path = self.vbox.system_properties.default_machine_folder
+        vm_path = self._vbox.system_properties.default_machine_folder
 
         # Obtain physical devices
         try:

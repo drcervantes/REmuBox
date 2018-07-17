@@ -311,7 +311,7 @@ try:
     l.info("| Service running. Use Ctrl-C to terminate gracefully. |")
     l.info("+------------------------------------------------------+")
 
-    if wrap:
+    if args.web:
         service = wsgi.WSGIServer(
             (config['REMU']['address'], int(config['REMU']['port'])),
             wrap,

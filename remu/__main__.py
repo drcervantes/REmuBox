@@ -311,7 +311,18 @@ try:
     l.info("| Service running. Use Ctrl-C to terminate gracefully. |")
     l.info("+------------------------------------------------------+")
 
-    service = wsgi.WSGIServer((config['REMU']['address'], int(config['REMU']['port'])), wrap, log=None)
+    if wrap:
+        service = wsgi.WSGIServer(
+            (config['REMU']['address'], int(config['REMU']['port'])),
+            wrap,
+            log=None
+        )
+    else:
+        service = wsgi.WSGIServer(
+            (config['REMU']['address'], int(config['REMU']['port'])),
+            application,
+            log=None
+        )
     service.serve_forever()
 
 except (KeyboardInterrupt, SystemExit):

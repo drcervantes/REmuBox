@@ -77,7 +77,7 @@ class Nginx():
             upstreams = [e for e in upstreams if e in ups]
 
             self.write_conf(map_conf, mappings)
-            self.write_conf(upstream_conf, mappings)
+            self.write_conf(upstream_conf, upstreams)
 
             return True
         return False

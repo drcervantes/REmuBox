@@ -25,7 +25,6 @@ class RemoteComponent():
                     if getattr(m, name):
                         return self._request(name, **kwargs)
                 except AttributeError:
-                    l.exception("RIP")
                     pass
         return get.__get__(self)
 

@@ -52,6 +52,7 @@ class Manager():
     def register_remote_server(self, ip, port):
         modules = [remu.server.WorkshopManager, remu.server.PerformanceMonitor]
         self.servers[ip] = remu.remote.RemoteComponent(ip, port, modules)
+        l.debug("Registering remote component for %s", ip)
 
     def start_workshop(self, workshop):
         """
@@ -94,7 +95,7 @@ class Manager():
         return ["{}_{}".format(sid, port) for port in vrde_ports]
 
     def _setup_available_workshop(self, workshop):
-        server = self.load_balance(workshop)
+        server = self.load_balance(workshop, False)
         if not server:
             l.info(" ... no suitable server found!")
             return None
@@ -106,7 +107,7 @@ class Manager():
         self._build_workshop(server, workshop, sid)
 
     @classmethod
-    def load_balance(cls, workshop):
+    def load_balance(cls, workshop, check_available=True):
         """
         Distributes the creation of workshop units across all server nodes available.
 
@@ -123,14 +124,15 @@ class Manager():
             l.error("Attempting to load balance with no servers!")
             return None
 
-        for server in servers:
-            l.debug(" ... checking for available session at server: %s", server["ip"])
+        if check_available:
+            for server in servers:
+                l.debug(" ... checking for available session at server: %s", server["ip"])
 
-            count = db.session_count_by_workshop(workshop, server['ip'], True)
-            l.debug(" ... found %d available", count)
+                count = db.session_count_by_workshop(workshop, server['ip'], True)
+                l.debug(" ... found %d available", count)
 
-            if count > 0:
-                return server['ip']
+                if count > 0:
+                    return server['ip']
 
         l.debug(" ... checking if we can spawn a new session")
 
@@ -151,12 +153,14 @@ class Manager():
         min_ip = 0
         for i, server in enumerate(servers):
             count = db.session_count(server['ip'])
+            l.debug(" ... session count for %s: %d", server['ip'], count)
             if count < sessions:
                 sessions = count
                 min_ip = i
+                l.debug(" ... setting min_ip to %s", server['ip'])
 
         # Finally ensure the server has enough resources
-        server = servers[i]
+        server = servers[min_ip]
         try:
             if server['mem'] < float(config['REMU']['mem_limit']) and \
                server['hdd'] < float(config['REMU']['hdd_limit']):
@@ -214,7 +218,7 @@ class Manager():
         if instances < workshop['min_instances']:
             new_sid = self._create_session(ip, workshop['name'])
             server.restore_unit(sid=session_id, new_sid=new_sid)
-            for machine in server.unit_to_str(new_sid):
+            for machine in server.unit_to_str(sid=new_sid):
                 db.insert_machine(ip, new_sid, machine['name'], machine['port'])
         else:
             # Remove machine

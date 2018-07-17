@@ -1,7 +1,7 @@
 """ TODO """
 import logging
 import json
-import urlparse
+import urllib
 import cryptography.fernet as fernet
 import requests
 import ast
@@ -25,6 +25,7 @@ class RemoteComponent():
                     if getattr(m, name):
                         return self._request(name, **kwargs)
                 except AttributeError:
+                    l.exception("RIP")
                     pass
         return get.__get__(self)
 
@@ -37,7 +38,7 @@ class RemoteComponent():
 
         for arg, val in kwargs.items():
             param = json.dumps(val)
-            param = urlparse.quote_plus(param)
+            param = urllib.quote_plus(param)
             query += "{}={}&".format(arg, param)
 
         l.debug("URL prior to encryption: %s%s", url_base, query[:-1])

@@ -90,7 +90,7 @@ def create_app():
             l.error("Unable to decrpyt url: %s", url.path)
             return flask.render_template("404.html")
 
-        l.debug("Received path: %s", url.path)
+        l.debug("Received path: %s", path)
 
         if path.find('?') > 0:
             method, query = path.split('?')
@@ -154,7 +154,7 @@ def sio_counts(sio):
     while True:
         data = db.session_to_workshop_count(True)
         sio.emit('counts', data)
-        gevent.sleep(3)
+        gevent.sleep(1)
 
 def parse_arguments():
     """

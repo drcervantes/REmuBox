@@ -35,7 +35,7 @@ class Manager():
         l.info("Starting minimum instances...")
         for w in db.get_all_workshops():
             for dummy in range(w["min_instances"]):
-                self.start_workshop(w["name"], True)
+                self._setup_available_workshop(w["name"])
 
         self.monitor_thread = gevent.spawn(self.monitor_service)
 
@@ -53,7 +53,7 @@ class Manager():
         modules = [remu.server.WorkshopManager, remu.server.PerformanceMonitor]
         self.servers[ip] = remu.remote.RemoteComponent(ip, port, modules)
 
-    def start_workshop(self, workshop, available=False):
+    def start_workshop(self, workshop):
         """
         Start a new session for a workshop participant.
         Returns a string containing a session id, the VRDE ports for the workshop unit,
@@ -70,23 +70,40 @@ class Manager():
         l.info("Load balancer selected: %s", server)
 
         # Get the session
-        session_id = self.obtain_session(server, workshop, available)
-        l.info("Using session: %s", session_id)
+        sid = db.get_available_session(server, workshop)
 
-        self._build_workshop(server, workshop, session_id)
-        if not available:
-            self.servers[server].start_unit(sid=session_id)
+        if sid:
+            db.update_session(server, sid, False)
+        else:
+            sid = self._create_session(server, workshop)
+            self._build_workshop(server, workshop, sid)
 
-        vrde_ports = db.get_vrde_ports(session_id)
+        l.info("Using session: %s", sid)
+
+        self.servers[server].start_unit(sid=sid)
+
+        vrde_ports = db.get_vrde_ports(sid)
 
         # Add entries to NGINX
         self.nginx.add_mapping(
-            session=session_id,
+            session=sid,
             server=server,
             ports=vrde_ports
         )
 
-        return ["{}_{}".format(session_id, port) for port in vrde_ports]
+        return ["{}_{}".format(sid, port) for port in vrde_ports]
+
+    def _setup_available_workshop(self, workshop):
+        server = self.load_balance(workshop)
+        if not server:
+            l.info(" ... no suitable server found!")
+            return None
+        l.info("Load balancer selected: %s", server)
+
+        sid = self._create_session(server, workshop)
+        l.info("Using session: %s", sid)
+
+        self._build_workshop(server, workshop, sid)
 
     @classmethod
     def load_balance(cls, workshop):
@@ -151,17 +168,6 @@ class Manager():
         l.error(" ... unable to find a suitable server!")
         return None
 
-    def obtain_session(self, server, workshop, available):
-        """Obtain a session for the specified workshop."""
-        session = db.get_available_session(server, workshop)
-
-        if session is None:
-            session = self._create_session(server, workshop)
-
-        if not available:
-            db.update_session(server, session, available)
-
-        return session
 
     def _create_session(self, server, workshop):
         session = self._create_session_id()
@@ -183,12 +189,10 @@ class Manager():
         server = self.servers[ip]
         session = db.get_session(ip, session_id)
 
-        # Workshop unit doesn't exist yet
-        if not session['machines']:
-            server.clone_unit(workshop=workshop, session_id=session_id)
+        server.clone_unit(workshop=workshop, session_id=session_id)
 
-            for machine in server.unit_to_str(sid=session_id):
-                db.insert_machine(ip, session_id, machine['name'], machine['port'])
+        for machine in server.unit_to_str(sid=session_id):
+            db.insert_machine(ip, session_id, machine['name'], machine['port'])
 
     def stop_workshop(self, session_id):
         l.info("Stopping session: %s", session_id)
@@ -216,6 +220,7 @@ class Manager():
             # Remove machine
             server.remove_unit(sid=session_id)
 
+
     def _status_update(self, ip):
         l.debug("Getting status update for %s", ip)
 
@@ -229,6 +234,7 @@ class Manager():
 
         for sid in status['sessions']:
             db.update_machines(ip, sid, status['sessions'][sid])
+
 
     def monitor_service(self):
         # Sessions to be recycled after the timeout interval

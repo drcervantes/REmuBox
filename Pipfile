@@ -17,6 +17,7 @@ scandir = "*"
 python-socketio = "*"
 pytest = "*"
 mongomock = "*"
+"pywin32" = {version = "*", sys_platform = "== 'win32'"}
 
 [requires]
 python_version = "2.7"

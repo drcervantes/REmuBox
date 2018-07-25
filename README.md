@@ -1,14 +1,16 @@
 # Remote Emulation Sandbox (REmuBox)
 
 ## Table of Contents
-* [1. Description](#1.-description)
-* [2. Installation](#2.-installation)
-  * [2.1 Requirements](#2.1-requirements)
-  * [2.2 Installing the Virtual Environment](#2.2-installing-the-virtual-environment)
-  * [2.3 Installing VirtualBox](#2.3-installing-virtualbox)
+* [1. Description](#1-description)
+* [2. Installation](#2-installation)
+  * [2.1 Requirements](#21-requirements)
+  * [2.2 Installing the Virtual Environment](#22-installing-the-virtual-environment)
+  * [2.3 Installing VirtualBox](#23-installing-virtualbox)
+  * [2.4 Installing MongoDB](#24-installing-mongodb)
+  * [2.5 Installing NGINX](#25-installing-nginx)
+* [3. Usage](#3-usage)
 
-
-### 1. Description
+## 1. Description
 The intent of the REmuBox project is to provide a flexible and scalable solution for creating small to mid-size cybersecurity scenarios for training and data acquisition.  It is a continuing work based off the EmuBox project (https://github.com/ARL-UTEP-OC/emubox).
 
 REmuBox leverages several free third-party software platforms for its operation:
@@ -32,7 +34,7 @@ Each component is designed to run on separate hardware, allowing for flexible co
 
 ------------
 
-### 2. Installation
+## 2. Installation
 REmuBox has been tested on:
 * Ubuntu 16.04 LTS (64-bit) Xenial Xerus
 * Ubuntu 18.04 LTS (64-bit) Bionic Beaver
@@ -42,7 +44,7 @@ In the root directory of the project, there is a Bash script named [install.sh](
 
 Xenial Xerus is the distribution used in the installation process that follows.  If you wish to use a different Ubuntu distribution, just substitute the name.
 
-#### 2.1 Requirements
+### 2.1 Requirements
 REmuBox requires the following for each installation:
 * Python 2.7 (tested with 2.7.15)
 * Pipenv (https://docs.pipenv.org/)
@@ -58,11 +60,11 @@ The dependencies for each component are as follows:
 This implies that only the needed software is required to be installed on remote components.  For example, a standalone server node requires 
 only VirtualBox to be installed.
 
-#### 2.2 Installing the Virtual Environment
+### 2.2 Installing the Virtual Environment
 ```bash
 pipenv install
 ```
-#### 2.3 Installing VirtualBox
+### 2.3 Installing VirtualBox
 Get the latest version of VirtualBox.
 ```bash
 LatestVirtualBoxVersion=$(wget -qO - http://download.virtualbox.org/virtualbox/LATEST.TXT)
@@ -88,20 +90,37 @@ pipenv run python sdk/installer/vboxapisetup.py install
 ```
 Please refer to https://www.virtualbox.org/ for additional help.
 
-#### Installing MongoDB
-Update apt to include the official MongoDB repository for xenial and install.
+### 2.4 Installing MongoDB
+Update apt to include the official MongoDB repository for xenial and install the pre-built Ubuntu package.
 ```bash
 apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
 add-apt-repository "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/4.0 multiverse"
 apt update
 apt install -y mongodb-org
 ```
-The following command can be used to ensure the service is running:
+The following command can be used to ensure the service is installed and running:
 ```bash
 systemctl status mongodb
 ```
+Please refer to https://www.mongodb.org for additional help.
 
-#### Installing NGINX
+### 2.5 Installing NGINX
+Update apt to include the official NGINX repository for xenial and install the pre-built Ubuntu package.
+```bash
+wget -q http://nginx.org/keys/nginx_signing.key -O- | apt-key add -
+add-apt-repository "deb http://nginx.org/packages/mainline/ubuntu/ xenial nginx"
+apt install -y nginx
+```
+The modules for NginScript must also be installed.  NginScript is used to retrieve the load balancing tokens and allows NGINX to determine which server to delegate the RDP traffic to.  These modules are still in development and are currently available for Linux distributions.  This is what limits REmuBox from full operation on a Windows platform.
+```bash
+apt install -y nginx-module-njs
+```
+The following command can be used to ensure the service is installed and running:
+```bash
+systemctl status nginx
+```
+Please refer to https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/#prebuilt_ubuntu and http://nginx.org/en/docs/njs_about.html for additional help.
+
 ------------
 
-### Usage
+## Usage

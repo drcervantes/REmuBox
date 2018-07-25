@@ -1,13 +1,14 @@
 # Remote Emulation Sandbox (REmuBox)
 
 ## Table of Contents
-* [Description](#description)
-* [Installation](#installation)
-  * [General Requirements](#general-requirements)
-  * [Module-Specific Requirements](#module-specific-requirements)
+* [1. Description](#1.-description)
+* [2. Installation](#2.-installation)
+  * [2.1 Requirements](#2.1-requirements)
+  * [2.2 Installing the Virtual Environment](#2.2-installing-the-virtual-environment)
+  * [2.3 Installing VirtualBox](#2.3-installing-virtualbox)
 
 
-### Description
+### 1. Description
 The intent of the REmuBox project is to provide a flexible and scalable solution for creating small to mid-size cybersecurity scenarios for training and data acquisition.  It is a continuing work based off the EmuBox project (https://github.com/ARL-UTEP-OC/emubox).
 
 REmuBox leverages several free third-party software platforms for its operation:
@@ -31,7 +32,7 @@ Each component is designed to run on separate hardware, allowing for flexible co
 
 ------------
 
-### Installation
+### 2. Installation
 REmuBox has been tested on:
 * Ubuntu 16.04 LTS (64-bit) Xenial Xerus
 * Ubuntu 18.04 LTS (64-bit) Bionic Beaver
@@ -39,9 +40,9 @@ REmuBox has been tested on:
 
 In the root directory of the project, there is a Bash script named [install.sh](https://github.com/drcervantes/REmuBox/blob/master/install.sh) which outlines the installation process for a fresh install onto a live disk.  This may be referenced as a guide to assist with the installation process.
 
-Xenial is the distribution used in the installation process that follows.  If you wish to use a different Ubuntu distribution, just substitute the name.
+Xenial Xerus is the distribution used in the installation process that follows.  If you wish to use a different Ubuntu distribution, just substitute the name.
 
-##### Requirements
+#### 2.1 Requirements
 REmuBox requires the following for each installation:
 * Python 2.7 (tested with 2.7.15)
 * Pipenv (https://docs.pipenv.org/)
@@ -57,16 +58,16 @@ The dependencies for each component are as follows:
 This implies that only the needed software is required to be installed on remote components.  For example, a standalone server node requires 
 only VirtualBox to be installed.
 
-##### Installing the Virtual Environment
+#### 2.2 Installing the Virtual Environment
 ```bash
 pipenv install
 ```
-##### Installing VirtualBox
+#### 2.3 Installing VirtualBox
 Get the latest version of VirtualBox.
 ```bash
 LatestVirtualBoxVersion=$(wget -qO - http://download.virtualbox.org/virtualbox/LATEST.TXT)
 ```
-Update apt to include the VirtualBox repository for xenial.
+Update apt to include the official VirtualBox repository for xenial.
 ```bash
 wget -q https://www.virtualbox.org/download/oracle_vbox_2016.asc -O- | apt-key add -
 wget -q https://www.virtualbox.org/download/oracle_vbox.asc -O- | apt-key add -
@@ -87,13 +88,20 @@ pipenv run python sdk/installer/vboxapisetup.py install
 ```
 Please refer to https://www.virtualbox.org/ for additional help.
 
-##### Installing MongoDB
+#### Installing MongoDB
+Update apt to include the official MongoDB repository for xenial and install.
 ```bash
 apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
-add-apt-repository "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $dist/mongodb-org/4.0 multiverse"
+add-apt-repository "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/4.0 multiverse"
 apt update
 apt install -y mongodb-org
 ```
+The following command can be used to ensure the service is running:
+```bash
+systemctl status mongodb
+```
+
+#### Installing NGINX
 ------------
 
 ### Usage

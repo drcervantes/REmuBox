@@ -40,9 +40,9 @@ REmuBox has been tested on:
 * Ubuntu 18.04 LTS (64-bit) Bionic Beaver
 * Windows 10 64-bit (NGINX NginScript module not supported)
 
-In the root directory of the project, there is a Bash script named [install.sh](https://github.com/drcervantes/REmuBox/blob/master/install.sh) which outlines the installation process for a fresh install onto a live disk.  This may be referenced as a guide to assist with the installation process.
+In the root directory of the project, there is a Bash script named [install.sh](https://github.com/drcervantes/REmuBox/blob/master/install.sh) which outlines the installation process for a fresh install onto a live disk. This may be referenced as a guide to assist with the installation process.
 
-Xenial Xerus is the distribution used in the installation process that follows.  If you wish to use a different Ubuntu distribution, just substitute the name.
+Xenial Xerus is the distribution used in the installation process that follows. If you wish to use a different Ubuntu distribution, just substitute the name.
 
 ### 2.1 Requirements
 REmuBox requires the following for each installation:
@@ -57,13 +57,19 @@ The dependencies for each component are as follows:
 | Manager | MongoDB (tested with 3.6.3) |
 | Nginx | NGINX (tested with 1.15.1) |
 
-This implies that only the needed software is required to be installed on remote components.  For example, a standalone server node requires 
-only VirtualBox to be installed.
+This implies that only the needed software is required to be installed on remote components. For example, a standalone server node requires only VirtualBox to be installed.
 
 ### 2.2 Installing the Virtual Environment
+The process of installing the Python depencies is straightforward thanks to pipenv. In the root directory of REmuBox, run the following command:
+
 ```bash
 pipenv install
 ```
+
+Pipenv provides two methods for interacting with the virtual environment:
+1. `pipenv run` will spawn a command installed into the virtual environment.
+2. `pipenv shell` will spawn a shell within the virtual environment.
+
 ### 2.3 Installing VirtualBox
 Get the latest version of VirtualBox.
 ```bash
@@ -124,3 +130,82 @@ Please refer to https://docs.nginx.com/nginx/admin-guide/installing-nginx/instal
 ------------
 
 ## Usage
+
+### 3.1 General Use
+REmuBox is designed to be run as a python module. The most common scenario is to run all of the REmuBox components on the same hardware. To do so, just run python with the `-m` argument and the module name `remu`:
+
+`pipenv run python -m remu`
+
+As mentioned above, REmuBox allows for flexible configurations. 
+
+| Argument | Component |
+| :------------ | :------------ |
+| -s | Server |
+| -w | Web Interface |
+| -m | Manager |
+| -n | Nginx |
+
+Example of running the web interface and nginx:
+
+`pipenv run python -m remu -nw`
+
+### 3.2 Adding a New Workshop
+1. Create a new folder in the workshops directory with the name of your workshop.
+2. Move the .ova files for the workshop into the folder.
+3. Create a config.xml file in the same folder.
+
+    Example config.xml file:
+    ```
+    <xml>
+        <workshop-settings>
+        
+            <!-- Required: The name of the workshop -->
+            <name>
+                Test_Workshop
+            </name>
+
+            <!-- Required: The name of the appliance to be imported -->
+            <appliance>
+                TinyCore.ova
+            </appliance>
+
+            <vm>
+                <!-- Required: The name of the vm that will be cloned -->
+                <name>
+                    TinyCore
+                </name>
+
+                <!-- Optional: Internal network name (intnet0-7) -->
+                <intnet0>
+                    myintnet
+                </intnet0>
+            </vm>
+
+        </workshop-settings>
+    </xml>
+    ```
+
+4. Optional: move any materials into a folder with the name materials.
+
+   Resulting directory structure should look similar to:
+
+   ```plain
+   /workshops
+       /My_Workshop
+           appliance.ova
+           config.xml
+           /materials
+               walkthrough.doc
+   ```
+
+5. Import the workshop into VirtualBox through REmuBox with the following command:
+   `python -m remu -s --import-workshops`
+
+   This process may take a while.
+
+6. Stop the service with Ctrl-C and start the website module (`python -m remu -nw`). Nginx is included to avoid the need to specify the port number in the url.
+7. Access the admin panel (default is http://127.0.0.1/admin).
+8. Navigate to workshops using the menu on the left.
+9. Click the Add a New Workshop button and fill out the form. _The workshop name should have the same name as the folder created in Step 1._
+10. Once finished, stop the service and restart with running all components (`python -m remu`).
+11. You should now see your workshop if you navigate to the user website (default is http://127.0.0.1).

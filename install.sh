@@ -41,6 +41,8 @@ apt install -y nginx-module-njs
 # Install mongoDB
 ##
 apt install -y mongodb-org
+mongo --eval "db.adminCommand({createUser: 'admin', pwd: 'admin', roles: [{role: 'userAdminAnyDatabase', db: 'admin'}]})"
+mongo --eval "db.adminCommand({createUser: 'remu', pwd: 'remu', roles: [{role: 'readWrite', db: 'remubox'}]})"
 
 ##
 # Install VirtualBox

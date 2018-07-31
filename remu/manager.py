@@ -22,6 +22,11 @@ class Manager():
         self.servers = {}
 
         if server:
+            try:
+                db.remove_server("127.0.0.1")
+            except Exception:
+                pass
+                
             db.insert_server("127.0.0.1", 9000)
             self.servers["127.0.0.1"] = server
 

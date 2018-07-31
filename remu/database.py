@@ -388,6 +388,10 @@ def remove_server(ip):
         server = Server.objects(ip=ip).first()
         server.delete()
 
+    except AttributeError:
+        l.exception("No server entry for ip: %s", ip)
+        raise
+
     except Exception:
         l.exception("Failed to remove server %s", ip)
         raise

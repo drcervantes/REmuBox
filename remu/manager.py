@@ -26,7 +26,7 @@ class Manager():
                 db.remove_server("127.0.0.1")
             except Exception:
                 pass
-                
+
             db.insert_server("127.0.0.1", 9000)
             self.servers["127.0.0.1"] = server
 
@@ -38,7 +38,8 @@ class Manager():
 
         # Start sessions for min instances
         l.info("Starting minimum instances...")
-        for w in db.get_all_workshops():
+        workshops = [w for w in db.get_all_workshops() if w['enabled']]
+        for w in workshops:
             for dummy in range(w["min_instances"]):
                 self._setup_available_workshop(w["name"])
 
@@ -54,10 +55,12 @@ class Manager():
 
         self.monitor_thread.kill()
 
+
     def register_remote_server(self, ip, port):
         modules = [remu.server.WorkshopManager, remu.server.PerformanceMonitor]
         self.servers[ip] = remu.remote.RemoteComponent(ip, port, modules)
         l.debug("Registering remote component for %s", ip)
+
 
     def start_workshop(self, workshop):
         """
@@ -99,6 +102,7 @@ class Manager():
 
         return ["{}_{}".format(sid, port) for port in vrde_ports]
 
+
     def _setup_available_workshop(self, workshop):
         server = self.load_balance(workshop, False)
         if not server:
@@ -110,6 +114,7 @@ class Manager():
         l.info("Using session: %s", sid)
 
         self._build_workshop(server, workshop, sid)
+
 
     @classmethod
     def load_balance(cls, workshop, check_available=True):
@@ -184,14 +189,17 @@ class Manager():
         db.insert_session(server, session, workshop, password)
         return session
 
+
     @classmethod
     def _create_session_id(cls):
         return remu.util.rand_str(int(config['REMU']['pass_len']))
         # return str(bson.ObjectId())
 
+
     @classmethod
     def _create_password(cls):
         return remu.util.rand_str(int(config['REMU']['pass_len']))
+
 
     def _build_workshop(self, ip, workshop, session_id):
         """ TODO """
@@ -202,6 +210,7 @@ class Manager():
 
         for machine in server.unit_to_str(sid=session_id):
             db.insert_machine(ip, session_id, machine['name'], machine['port'])
+
 
     def stop_workshop(self, session_id):
         l.info("Stopping session: %s", session_id)

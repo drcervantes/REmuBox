@@ -8,7 +8,12 @@
   * [2.3 Installing VirtualBox](#23-installing-virtualbox)
   * [2.4 Installing MongoDB](#24-installing-mongodb)
   * [2.5 Installing NGINX](#25-installing-nginx)
+  * [2.6 Update the Config File](#26-update-the-config-file)
+  * [2.7 Create Third-Party Configurations](#27-create-third-party-configurations)
 * [3. Usage](#3-usage)
+  * [3.1 General Use](#31-general-use)
+  * [3.2 Adding a New Workshop](#32-adding-a-new-workshop)
+  * [3.3 Modifying an Existing Workshop](#33-modifying-an-existing-workshop)
 
 ## 1. Description
 The intent of the REmuBox project is to provide a flexible and scalable solution for creating small to mid-size cybersecurity scenarios for training and data acquisition.  It is a continuing work based off the EmuBox project (https://github.com/ARL-UTEP-OC/emubox).
@@ -40,7 +45,7 @@ REmuBox has been tested on:
 * Ubuntu 18.04 LTS (64-bit) Bionic Beaver
 * Windows 10 64-bit (NGINX NginScript module not supported)
 
-In the root directory of the project, there is a Bash script named [install.sh](https://github.com/drcervantes/REmuBox/blob/master/install.sh) which outlines the installation process for a fresh install onto a live disk. This may be referenced as a guide to assist with the installation process.
+In the root directory of the project, there is a Bash script named [livedisk_script.sh](https://github.com/drcervantes/REmuBox/blob/master/livedisk_script.sh) which outlines the installation process for a fresh install onto a live disk. This may be referenced as a guide to assist with the installation process.
 
 Xenial Xerus is the distribution used in the installation process that follows. If you wish to use a different Ubuntu distribution, just substitute the name.
 
@@ -143,7 +148,7 @@ systemctl status nginx
 ```
 Please refer to https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/#prebuilt_ubuntu and http://nginx.org/en/docs/njs_about.html for additional help.
 
-### 2.6 Completing the config.ini File
+### 2.6 Update the Config File
 Inside the root directory of the REmuBox project, there is a config.ini file that must be completed. The following fields must be updated to reflect your configuration:
 
 * REMU Section
@@ -162,7 +167,7 @@ Inside the root directory of the REmuBox project, there is a config.ini file tha
   * address
   * port
 
-### 2.7 Running the Configuration Script
+### 2.7 Create Third-Party Configurations
 The final step of the installation process is to run the configure.py script. This will use the values from config.ini (Step 2.6) to create the configuration files used by the third-party software and complete the missing fields in the config.ini file.
 ```bash
 pipenv run python configure.py
@@ -250,3 +255,6 @@ Example of running the web interface and nginx:
 9. Click the Add a New Workshop button and fill out the form. _The workshop name should have the same name as the folder created in Step 1._
 10. Once finished, stop the service and restart with running all components (`python -m remu`).
 11. You should now see your workshop if you navigate to the user website (default is http://127.0.0.1).
+
+### 3.3 Modifying an Existing Workshop
+To modify an imported workshop, simply modify the machine and take a new snapshot of its state. The cloning process will use the most recent snapshot when creating new workshop units for users. If it is necessary to power on the machine to make the modifications, ensure that the machine is in a 'Powered Off' state when the changes are completed and not 'Saved'.

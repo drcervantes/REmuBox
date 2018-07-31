@@ -24,7 +24,9 @@ admin_bp = Blueprint("admin", __name__)
 
 @user_bp.route("/")
 def index():
-    workshops = db.get_all_workshops()
+    # Get enabled workshops
+    workshops = [w for w in db.get_all_workshops() if w['enabled']]
+
     for w in workshops:
         w['display_name'] = w['name'].replace("_", " ")
 

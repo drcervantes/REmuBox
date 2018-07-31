@@ -79,23 +79,6 @@ unzip "VirtualBoxSDK-${LatestVirtualBoxVersion}.zip"
 # Install all the dependencies for the project
 ##
 pipenv install
-pipenv shell
 
-##
-# Set environment variables for VirtualBox SDK install
-##
-if [ -z "$VBOX_INSTALL_PATH" ]; then
-    echo "Warning: VBOX_INSTALL_PATH was not set, using: $(which virtualbox)" 
-    export VBOX_INSTALL_PATH=$(which virtualbox)
-fi  
-if [ -z "$VBOX_SDK_PATH" ]; then
-    echo "Warning: VBOX_SDK_PATH was not set, using: $(pwd)/sdk/" 
-    export VBOX_SDK_PATH=`pwd`/sdk/
-fi  
-if [ -z "$VBOX_PROGRAM_PATH" ]; then
-    echo "Warning: VBOX_PROGRAM_PATH was not set, using: /usr/lib/virtualbox/" 
-    export VBOX_PROGRAM_PATH=/usr/lib/virtualbox/
-fi 
-
-python sdk/installer/vboxapisetup.py install
-python configure.py
+pipenv run python sdk/installer/vboxapisetup.py install
+pipenv run python configure.py

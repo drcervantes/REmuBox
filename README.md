@@ -44,6 +44,12 @@ In the root directory of the project, there is a Bash script named [install.sh](
 
 Xenial Xerus is the distribution used in the installation process that follows. If you wish to use a different Ubuntu distribution, just substitute the name.
 
+The installation process at a high level is as follows:
+1. Install Python and the virtual environment
+2. Install third-party software
+3. Complete the config.ini file
+4. And lastly, run the configure.py script.
+
 ### 2.1 Requirements
 REmuBox requires the following for each installation:
 * Python 2.7 (tested with 2.7.15)
@@ -108,6 +114,16 @@ The following command can be used to ensure the service is installed and running
 ```bash
 systemctl status mongodb
 ```
+
+The next step is to create an administrative user. Fill in the following command with your own credentials (... createUser: 'aegis', pwd: 'GG@29LuLz' ...):
+```bash
+mongo --eval "db.adminCommand({createUser: 'admin', pwd: 'admin', roles: [{role: 'userAdminAnyDatabase', db: 'admin'}]})"
+```
+and repeat the same for the user with specific access to the remubox database:
+```bash
+mongo --eval "db.adminCommand({createUser: 'remu', pwd: 'remu', roles: [{role: 'readWrite', db: 'remubox'}]})"
+```
+
 Please refer to https://www.mongodb.org for additional help.
 
 ### 2.5 Installing NGINX
@@ -117,7 +133,7 @@ wget -q http://nginx.org/keys/nginx_signing.key -O- | apt-key add -
 add-apt-repository "deb http://nginx.org/packages/mainline/ubuntu/ xenial nginx"
 apt install -y nginx
 ```
-The modules for NginScript must also be installed.  NginScript is used to retrieve the load balancing tokens and allows NGINX to determine which server to delegate the RDP traffic to.  These modules are still in development and are currently available for Linux distributions.  This is what limits REmuBox from full operation on a Windows platform.
+The modules for NginScript must also be installed. NginScript is used to retrieve the load balancing tokens and allows NGINX to determine which server to delegate the RDP traffic to.  These modules are still in development and are currently available for Linux distributions. This is what limits REmuBox from full operation on a Windows platform.
 ```bash
 apt install -y nginx-module-njs
 ```
@@ -126,6 +142,31 @@ The following command can be used to ensure the service is installed and running
 systemctl status nginx
 ```
 Please refer to https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/#prebuilt_ubuntu and http://nginx.org/en/docs/njs_about.html for additional help.
+
+### 2.6 Completing the config.ini File
+Inside the root directory of the REmuBox project, there is a config.ini file that must be completed. The following fields must be updated to reflect your configuration:
+
+* REMU Section
+  * address
+  * port
+* DATABASE Section
+  * address
+  * port
+  * verbose
+  * username (final part in Step 2.4)
+  * password
+* MANAGER Section
+  * address
+  * port
+* NGINX Section
+  * address
+  * port
+
+### 2.7 Running the Configuration Script
+The final step of the installation process is to run the configure.py script. This will use the values from config.ini (Step 2.6) to create the configuration files used by the third-party software and complete the missing fields in the config.ini file.
+```bash
+pipenv run python configure.py
+```
 
 ------------
 

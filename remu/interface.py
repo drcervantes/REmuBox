@@ -17,7 +17,7 @@ import remu.forms as forms
 import remu.database as db
 from remu.settings import config
 
-l = logging.getLogger('default')
+l = logging.getLogger(config["REMU"]["logger"])
 
 user_bp = Blueprint("user", __name__)
 admin_bp = Blueprint("admin", __name__)
@@ -54,6 +54,7 @@ def checkout(os_type, workshop):
     manager = current_app.config['MANAGER']
 
     ids = manager.start_workshop(workshop=workshop)
+    l.debug("Checkout ids: %s", str(ids))
 
     # Start_workshop returns a list so we take the first element, split
     # the name by '_' and take the first part (i.e. session_port)

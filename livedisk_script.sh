@@ -80,5 +80,9 @@ unzip "VirtualBoxSDK-${LatestVirtualBoxVersion}.zip"
 ##
 pipenv install
 
+echo "VBOX_INSTALL_PATH=$(which virtualbox)" > .env
+echo "VBOX_SDK_PATH=$(pwd)/sdk/" >> .env
+echo "VBOX_PROGRAM_PATH=/usr/lib/virtualbox/" >> .env
+
 pipenv run python sdk/installer/vboxapisetup.py install
 pipenv run python configure.py

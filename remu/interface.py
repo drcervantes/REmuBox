@@ -5,7 +5,7 @@ import time
 
 from flask_login import login_required, current_user, login_user, logout_user
 from flask import (Blueprint, redirect, render_template, url_for, send_from_directory, 
-    current_app, session, request)
+    current_app, session, request, send_file)
 from werkzeug.utils import secure_filename
 
 try:
@@ -28,7 +28,8 @@ def index():
     workshops = [w for w in db.get_all_workshops() if w['enabled']]
 
     for w in workshops:
-        w['display_name'] = w['name'].replace("_", " ")
+        if not bool(w['display']):
+            w['display'] = w['name'].replace("_", " ")
 
         materials = os.path.join(config["REMU"]["workshops"], w['name'], "materials")
         if os.path.exists(materials):
@@ -75,30 +76,32 @@ def checkout(os_type, workshop):
     if len(ids) > 1:
         # We have multiple machines with VRDE ports so we want to combine
         # them into a zip file for the user
-        base_dir = os.path.join(config["REMU"]["workshops"], workshop)
-        machines = [name[:name.rfind("_")] for name in db.get_vrde_machine_names(sid)]
 
-        # Create the rdp files to stash in the zip
-        files = []
-        for i, session_id in enumerate(ids):
-            file = os.path.join(base_dir, machines[i])
-            with open(file, 'w') as f:
-                f.write(render_template(template, address=addr, session=session_id))
-                files.append(file)
+        mem_zip = io.BytesIO()
 
-        # Zip them up
-        zip_file = os.path.join(base_dir, sid)
-        with zipfile.ZipFile(zip_file, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
-            for f in files:
-                zipf.write(f)
+        with zipfile.ZipFile(mem_zip, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+            for sid, machine_name in zip(ids, machines):
+                filename = machine_name + '.rdp'
 
-        # Delete generated rdp files
-        for f in files:
-            os.remove(f)
+                mem_file = io.StringIO(filename)
+                mem_file.write(render_template('rdp.jnj2', address=addr, session=sid))
 
-        return zip_file
+                zf.writestr(filename, mem_file.getvalue())
 
-    return render_template(template, address=addr, session=ids[0])
+                mem_file.close()
+
+        mem_zip.seek(0)
+
+        zip_name = workshop + '.zip'  
+        return send_file(mem_zip, attachment_filename=zip_name, as_attachment=True)
+
+    filename = machine_name + '.rdp'
+    mem_file = io.StringIO(filename)
+    mem_file.write(render_template('rdp.jnj2', address=addr, session=ids[0]))
+    mem_file.seek(0)
+
+    return send_file(mem_file, attachment_filename=filename, as_attachment=True)
+
 
 @user_bp.route('/materials/<path:workshop>/<path:filename>')
 def fetch_document(workshop, filename):

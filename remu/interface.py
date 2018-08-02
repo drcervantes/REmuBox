@@ -54,7 +54,6 @@ def checkout(os_type, workshop):
     manager = current_app.config['MANAGER']
 
     ids = manager.start_workshop(workshop=workshop)
-    l.debug("Checkout ids: %s", str(ids))
 
     # Start_workshop returns a list so we take the first element, split
     # the name by '_' and take the first part (i.e. session_port)
@@ -207,6 +206,7 @@ def add_workshop():
 
         db.insert_workshop(
             form.name.data,
+            form.display.data,
             form.description.data,
             form.mini.data,
             form.maxi.data,

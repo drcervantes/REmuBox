@@ -256,7 +256,7 @@ def insert_server(ip, port):
         raise
 
 
-def insert_workshop(name, desc, min_units, max_units, enabled):
+def insert_workshop(name, display, desc, min_units, max_units, enabled):
     """
     Insert a new workshop document.
     """
@@ -267,6 +267,7 @@ def insert_workshop(name, desc, min_units, max_units, enabled):
     try:
         workshop = Workshop(
             name=name,
+            display=display,
             description=desc,
             min_instances=min_units,
             max_instances=max_units,

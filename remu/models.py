@@ -4,12 +4,10 @@ from mongoengine import (
     )
 from flask_login import UserMixin
 
-"""
-    TODO: Apply constraints to the models.
-"""
 
 class Workshop(Document):
     name = StringField(unique=True, required=True)
+    display = StringField()
     description = StringField()
     enabled = BooleanField(required=True)
     min_instances = IntField(min_value=0, required=True)

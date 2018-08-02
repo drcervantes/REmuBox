@@ -29,7 +29,7 @@ class TestDatabase:
 
 
 	def test_insert_workshop_normal(self):
-		insert_workshop('test', '', 0, 0, True)
+		insert_workshop('test', '', '', 0, 0, True)
 		assert Workshop.objects.first().name == 'test'
 
 	def test_insert_workshop_wrong_type(self):
@@ -38,16 +38,16 @@ class TestDatabase:
 
 	def test_insert_workshop_empty_name(self):
 		with pytest.raises(Exception):
-			insert_workshop('', '', 0, 0, True)
+			insert_workshop('', '', '', 0, 0, True)
 
 	def test_insert_workshop_duplicate_name(self):
 		with pytest.raises(Exception):
-			insert_workshop('test', '', 0, 0, True)
-			insert_workshop('test', '', 0, 0, True)
+			insert_workshop('test', '', '', 0, 0, True)
+			insert_workshop('test', '', '', 0, 0, True)
 
 	def test_insert_workshop_invalid_range(self):
 		with pytest.raises(Exception):
-			insert_workshop('', '', -1, 0, True)
+			insert_workshop('', '', '', -1, 0, True)
 
 
 	def test_insert_session_normal(self, server, workshop):

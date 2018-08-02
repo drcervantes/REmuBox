@@ -27,7 +27,7 @@ def server():
 
 @pytest.fixture(scope='function')
 def workshop():
-	insert_workshop('test', '', 0, 0, True)
+	insert_workshop('test', ,'', '', 0, 0, True)
 	return Workshop.objects().first()
 
 

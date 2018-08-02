@@ -38,8 +38,19 @@
   <body>
 
     <section class="container">
-      <div class="row" style="margin-bottom: 3rem">
+      <div class="row" style="margin-bottom: 2rem">
         <h1 class="center">REmuBox</h1>
+      </div>
+      <div class="row" class="alert alert-danger" role="alert" style="margin-bottom: 2rem">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <ul>
+            {% for message in messages %}
+              <li>{{ message }}</li>
+            {% endfor %}
+            </ul>
+         {% endif %}
+      {% endwith %}
       </div>
     </section>
 
@@ -55,7 +66,7 @@
           </tr>
           {% for workshop in workshops %}
           <tr>
-            <td>{{ workshop.display_name }}</td>
+            <td>{{ workshop.display }}</td>
             <td>{{ workshop.description }}</td>
             <td>
               {% if workshop.materials is none %}
@@ -68,10 +79,10 @@
             </td>
             <td>
               <div id="{{ workshop.name }}_links">
-                <a href="/checkout/windows/{{ workshop.name }}" download="{{ workshop.display_name }}.rdp">
+                <a href="/checkout/windows/{{ workshop.name }}" download>
                   <button class="download"><i class="fa fa-windows"></i></button>
                 </a>
-                <a href="/checkout/linux/{{ workshop.name }}" download="{{ workshop.display_name }}.rdp">
+                <a href="/checkout/linux/{{ workshop.name }}" download>
                   <button class="download"><i class="fa fa-linux"></i></button>
                 </a>
               </div>
@@ -83,11 +94,25 @@
           {% endfor %}
         </table>
         {% else %}
-        <p>Are you trying to reconnect to your workshop?</p>
-        <a href="/reconnect/{{ sid }}" download="reconnect.rdp">
-          <button class="download">Reconnect</button>
-        </a>
-        <p>Otherwise, you'll be able to start a new workshop shortly.</p>
+        <table class="center">
+          <tr>
+            <td>
+              <p>Are you trying to reconnect to your workshop?</p>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <a href="/reconnect" download>
+                <button class="download">Reconnect</button>
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <p>Otherwise, you'll be able to start a new workshop shortly.</p>
+            </td>
+          </tr>
+        </table>
         {% endif %}
       </div>
     </section>

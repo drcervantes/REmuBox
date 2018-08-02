@@ -5,7 +5,7 @@ import time
 
 from flask_login import login_required, current_user, login_user, logout_user
 from flask import (Blueprint, redirect, render_template, url_for, send_from_directory, 
-    current_app, session, request, send_file)
+    current_app, session, request, send_file, flash)
 from werkzeug.utils import secure_filename
 
 try:
@@ -17,10 +17,12 @@ import remu.forms as forms
 import remu.database as db
 from remu.settings import config
 
+
 l = logging.getLogger(config["REMU"]["logger"])
 
 user_bp = Blueprint("user", __name__)
 admin_bp = Blueprint("admin", __name__)
+
 
 @user_bp.route("/")
 def index():
@@ -37,32 +39,19 @@ def index():
         else:
             w['materials'] = None
 
-    sid = None
     if "sid" in session:
-        # If the session has been recycled, clear the cookie
-        if not db.session_exists(session["sid"]):
+        # Start_workshop returns a list so we take the first element, split
+        # the name by '_' and take the first part (i.e. session_port)
+        sid = ids[0].split("_")[0]
+
+        if not db.session_exists(sid):
+            # If the session has been recycled, clear the cookie
             session.pop("sid", None)
 
-        # Otherwise we include the existing session id for reconnect
-        else:
-            sid = session["sid"]
+    return render_template("index.html", workshops=workshops)
 
-    return render_template("index.html", sid=sid, workshops=workshops)
 
-@user_bp.route('/checkout/<path:os_type>/<path:workshop>')
-def checkout(os_type, workshop):
-    # Get handle to manager module
-    manager = current_app.config['MANAGER']
-
-    ids = manager.start_workshop(workshop=workshop)
-
-    # Start_workshop returns a list so we take the first element, split
-    # the name by '_' and take the first part (i.e. session_port)
-    sid = ids[0].split("_")[0]
-
-    # Store it in a cookie managed by Flask
-    session["sid"] = sid
-
+def build_rdp_files(ids, os_type):
     # We need the address for nginx
     addr = "{}:{}".format(config["NGINX"]["address"], config["NGINX"]["port"])
 
@@ -71,7 +60,7 @@ def checkout(os_type, workshop):
     elif os_type == "linux":
         template = "rdp.jnj2"
     else:
-        return "Invalid platform choice."
+        raise Exception
 
     if len(ids) > 1:
         # We have multiple machines with VRDE ports so we want to combine
@@ -92,21 +81,64 @@ def checkout(os_type, workshop):
 
         mem_zip.seek(0)
 
-        zip_name = workshop + '.zip'  
-        return send_file(mem_zip, attachment_filename=zip_name, as_attachment=True)
+        zip_name = workshop + '.zip'
+        return (zip_name, mem_zip)
 
-    filename = machine_name + '.rdp'
+    filename = workshop + '.rdp'
     mem_file = io.StringIO(filename)
     mem_file.write(render_template('rdp.jnj2', address=addr, session=ids[0]))
     mem_file.seek(0)
 
-    return send_file(mem_file, attachment_filename=filename, as_attachment=True)
+    return (filename, mem_file)
+
+
+@user_bp.route('/checkout/<path:os_type>/<path:workshop>')
+def checkout(os_type, workshop):
+    # Prevent repeated requests
+    if "sid" in session:
+        flash("You've already started a workshop! Try the reconnect button or wait for your session to be recycled.")
+        return redirect(url_for('user.index'))
+
+    # Get handle to manager module
+    manager = current_app.config['MANAGER']
+
+    ids = manager.start_workshop(workshop=workshop)
+
+    if not ids:
+        l.error("Something weird happened. No IDs provided for checkout")
+        flash("Error starting workshop! Please contact the adminstrator.")
+        return redirect(url_for('user.index'))
+
+    # Store ids in a cookie managed by Flask
+    session["sid"] = ids
+
+    try:
+        name, file = build_rdp_files(ids, os_type)
+        return send_file(file, attachment_filename=name, as_attachment=True)
+
+    except Exception:
+        l.exception("Invalid os type in RDP file creation!")
+        flash("Invalid OS type!")
+        return redirect(url_for('user.index'))
 
 
 @user_bp.route('/materials/<path:workshop>/<path:filename>')
 def fetch_document(workshop, filename):
     materials = os.path.join(config["REMU"]["workshops"], workshop, "materials")
     return send_from_directory(materials, filename, as_attachment=True)
+
+
+@user_bp.route('/reconnect/<path:workshop>')
+def reconnect(workshop):
+    if "sid" not in session:
+        flash("No session ID found!")
+        return redirect(url_for('user.index'))
+
+    ids = session["sid"]
+    name, file = build_rdp_files(ids, os_type)
+
+    return send_file(file, attachment_filename=name, as_attachment=True)
+
 
 """
 Admin interface

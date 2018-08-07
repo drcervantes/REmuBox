@@ -188,8 +188,16 @@ if find_executable('mongod'):
 # Create the NGINX configuration file
 if find_executable('nginx'):
     try:
-        addr = config.get('DATABASE', 'address')
-        port = config.get('DATABASE', 'port')
+        src = os.path.join(os.getcwd(), 'setup', 'rdp_hook.js')
+        dst = '/etc/nginx/rdp_hook.js'
+        shutil.copyfile(src, dst)
+        print("... copied rdp_hook.js to nginx root")
+    except Exception:
+        print("... failed to copy rdp_hook.js to nginx root!")
+
+    try:
+        addr = config.get('NGINX', 'address')
+        port = config.get('NGINX', 'port')
         static = os.path.join(os.getcwd(), 'remu', 'workshops')
 
         with io.open('/etc/nginx/nginx.conf', 'w', encoding='utf-8') as f:
@@ -211,13 +219,5 @@ if find_executable('nginx'):
         print('... nginx service restarted')
     except subprocess.CalledProcessError:
         print('... failed to restart nginx service!')
-
-try:
-    src = os.path.join(os.getcwd(), 'setup', 'rdp_hook.js')
-    dst = '/etc/nginx/rdp_hook.js'
-    shutil.copyfile(src, dst)
-    print("... copied rdp_hook.js to nginx root")
-except Exception:
-    print("... failed to copy rdp_hook.js to nginx root!")
 
 print('Configuration complete!')

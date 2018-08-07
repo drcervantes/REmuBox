@@ -259,9 +259,12 @@ if not any([args.manager, args.server, args.nginx, args.web]):
 if args.manager or args.web:
     import mongoengine
     mongoengine.connect(
-        config['DATABASE']['name'],
+        db=config['DATABASE']['name'],
         host=config['DATABASE']['address'],
-        port=int(config['DATABASE']['port'])
+        port=int(config['DATABASE']['port']),
+        username=config['DATABASE']['username'],
+        password=config['DATABASE']['password'],
+        authentication_source='admin'
     )
 
 # Use the arguments to determine which modules to run.

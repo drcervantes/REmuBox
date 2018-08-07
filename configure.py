@@ -176,9 +176,12 @@ if find_executable('mongod'):
 
     try:
         mongoengine.connect(
-            'remubox',
+            db='remubox',
+            host=config.get('DATABASE', 'address'),
+            port=config.get('DATABASE', 'port'),
             username=config.get('DATABASE', 'username'),
-            password=config.get('DATABASE', 'password')
+            password=config.get('DATABASE', 'password'),
+            authentication_source='admin'
         )
         account = User(name=username, password=password)
         account.save()
@@ -204,9 +207,9 @@ if find_executable('nginx'):
         print("... failed to copy rdp_hook.js to nginx root!")
 
     try:
-        addr = config.get('NGINX', 'address')
-        port = config.get('NGINX', 'port')
-        static = os.path.join(os.getcwd(), 'remu', 'workshops')
+        addr = config.get('REMU', 'address')
+        port = config.get('REMU', 'port')
+        static = os.path.join(os.getcwd(), 'remu', 'static')
 
         with io.open('/etc/nginx/nginx.conf', 'w', encoding='utf-8') as f:
             text = render_jinja(

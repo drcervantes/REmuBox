@@ -179,7 +179,7 @@ if find_executable('mongod'):
         mongoengine.connect(
             db='remubox',
             host=config.get('DATABASE', 'address'),
-            port=config.get('DATABASE', 'port'),
+            port=int(config.get('DATABASE', 'port')),
             username=config.get('DATABASE', 'username'),
             password=config.get('DATABASE', 'password'),
             authentication_source='admin'

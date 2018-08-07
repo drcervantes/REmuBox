@@ -36,11 +36,13 @@ apt -y upgrade
 ##
 apt install -y nginx
 apt install -y nginx-module-njs
+systemctl start nginx
 
 ##
 # Install mongoDB
 ##
 apt install -y mongodb-org
+systemctl start mongod
 mongo --eval "db.adminCommand({createUser: 'admin', pwd: 'admin', roles: [{role: 'userAdminAnyDatabase', db: 'admin'}]})"
 mongo --eval "db.adminCommand({createUser: 'remu', pwd: 'remu', roles: [{role: 'readWrite', db: 'remubox'}]})"
 
@@ -84,5 +86,5 @@ echo "VBOX_INSTALL_PATH=$(which virtualbox)" > .env
 echo "VBOX_SDK_PATH=$(pwd)/sdk/" >> .env
 echo "VBOX_PROGRAM_PATH=/usr/lib/virtualbox/" >> .env
 
-pipenv run python sdk/installer/vboxapisetup.py install
+pipenv shell "cd sdk/installer; python vboxapisetup.py install; exit $?"
 pipenv run python configure.py

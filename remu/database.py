@@ -390,7 +390,7 @@ def remove_server(ip):
         server.delete()
 
     except AttributeError:
-        l.exception("No server entry for ip: %s", ip)
+        l.error("No server entry for ip: %s", ip)
         raise
 
     except Exception:

@@ -39,6 +39,7 @@ def index():
         else:
             w['materials'] = None
 
+    sid = None
     if "sid" in session:
         # Start_workshop returns a list so we take the first element, split
         # the name by '_' and take the first part (i.e. session_port)
@@ -48,7 +49,7 @@ def index():
             # If the session has been recycled, clear the cookie
             session.pop("sid", None)
 
-    return render_template("index.html", workshops=workshops)
+    return render_template("index.html", workshops=workshops, sid=sid)
 
 
 def build_rdp_files(ids, os_type):

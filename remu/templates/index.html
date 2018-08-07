@@ -94,25 +94,13 @@
           {% endfor %}
         </table>
         {% else %}
-        <table class="center">
-          <tr>
-            <td>
-              <p>Are you trying to reconnect to your workshop?</p>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <a href="/reconnect" download>
-                <button class="download">Reconnect</button>
-              </a>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <p>Otherwise, you'll be able to start a new workshop shortly.</p>
-            </td>
-          </tr>
-        </table>
+        <p class="center">Are you trying to reconnect to your workshop?</p>
+        <br>
+        <a class="center" href="/reconnect" download>
+          <button class="download">Reconnect</button>
+        </a>
+        <br>
+        <p class="center">Otherwise, you'll be able to start a new workshop shortly.</p>
         {% endif %}
       </div>
     </section>

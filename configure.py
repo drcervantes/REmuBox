@@ -144,7 +144,7 @@ if find_executable('mongod'):
         port = config.get('DATABASE', 'port')
         verbose = config.get('DATABASE', 'verbose')
 
-        with io.open('/etc/mongodb.conf', 'w', encoding='utf-8') as f:
+        with io.open('/etc/mongod.conf', 'w', encoding='utf-8') as md, io.open('/etc/mongodb.conf', 'w', encoding='utf-8') as mdb:
             text = render_jinja(
                 'setup',
                 'mongodb.conf',
@@ -152,7 +152,8 @@ if find_executable('mongod'):
                 port=port,
                 verbose=verbose
             )
-            f.write(text)
+            md.write(text)
+            mdb.write(text)
 
         print("... wrote mongodb.conf file")
     except Exception:

@@ -4,6 +4,7 @@ import socket
 import sys
 import os
 import jinja2
+import subprocess
 
 from cryptography.fernet import Fernet
 from distutils.spawn import find_executable

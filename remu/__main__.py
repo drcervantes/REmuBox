@@ -152,7 +152,9 @@ def sio_counts(sio):
     Task which regularly emits session counts to the end-users.
     """
     while True:
-        data = db.session_to_workshop_count(True)
+        data = db.session_to_workshop_count()
+        for w in db.get_all_workshops():
+            data[w['name']] = w['max_instances'] - data[w['name']]
         sio.emit('counts', data)
         gevent.sleep(1)
 

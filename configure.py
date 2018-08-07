@@ -5,6 +5,7 @@ import sys
 import os
 import jinja2
 import subprocess
+import io
 
 from cryptography.fernet import Fernet
 from distutils.spawn import find_executable
@@ -70,6 +71,43 @@ except Exception:
 
 print("Configuring REmuBox")
 
+# Validation check (this could be better)
+print("... validating config.ini")
+if not is_valid_ipv4_address(config.get('REMU', 'address')):
+    print('[REMU][address] is not a valid ip address!')
+    sys.exit()
+
+if not is_valid_ipv4_address(config.get('DATABASE', 'address')):
+    print('[DATABASE][address] is not a valid ip address!')
+    sys.exit()
+
+if not is_valid_ipv4_address(config.get('MANAGER', 'address')):
+    print('[MANAGER][address] is not a valid ip address!')
+    sys.exit()
+
+if not is_valid_ipv4_address(config.get('NGINX', 'address')):
+    print('[NGINX][address] is not a valid ip address!')
+    sys.exit()
+
+port_range = range(1024, 65536)
+
+if config.getint('REMU', 'port') not in port_range:
+    print('[REMU][port] is not a valid port!')
+    sys.exit()
+
+if config.getint('DATABASE', 'port') not in port_range:
+    print('[DATABASE][port] is not a valid port!')
+    sys.exit()
+
+if config.getint('MANAGER', 'port') not in port_range:
+    print('[MANAGER][port] is not a valid port!')
+    sys.exit()
+
+if config.getint('NGINX', 'port') not in port_range:
+    print('[NGINX][port] is not a valid port!')
+    sys.exit()
+
+
 # Generate new symmetric key
 try:
     config.set('REMU', 'secret_key', Fernet.generate_key().decode())
@@ -105,7 +143,7 @@ if find_executable('mongod'):
         port = config.get('DATABASE', 'port')
         verbose = config.get('DATABASE', 'verbose')
 
-        with open('/etc/mongodb.conf', 'w') as f:
+        with io.open('/etc/mongodb.conf', 'w', encoding='utf-8') as f:
             text = render_jinja(
                 'setup',
                 'mongodb.conf',
@@ -153,9 +191,7 @@ if find_executable('nginx'):
         port = config.get('DATABASE', 'port')
         static = os.path.join(os.getcwd(), 'remu', 'workshops')
 
-        template = './setup/nginx.conf'
-
-        with open('/etc/nginx/nginx.conf', 'w') as f:
+        with io.open('/etc/nginx/nginx.conf', 'w', encoding='utf-8') as f:
             text = render_jinja(
                 'setup',
                 'nginx.conf',
@@ -174,35 +210,5 @@ if find_executable('nginx'):
         print('... nginx service restarted')
     except subprocess.CalledProcessError:
         print('... failed to restart nginx service!')
-
-
-# Validation check (this could be better)
-print("Validating config.ini...")
-if not is_valid_ipv4_address(config.get('REMU', 'address')):
-    print('[REMU][address] is not a valid ip address!')
-
-if not is_valid_ipv4_address(config.get('DATABASE', 'address')):
-    print('[DATABASE][address] is not a valid ip address!')
-
-if not is_valid_ipv4_address(config.get('MANAGER', 'address')):
-    print('[MANAGER][address] is not a valid ip address!')
-
-if not is_valid_ipv4_address(config.get('NGINX', 'address')):
-    print('[NGINX][address] is not a valid ip address!')
-
-port_range = range(1024, 65536)
-
-if config.getint('REMU', 'port') not in port_range:
-    print('[REMU][port] is not a valid port!')
-
-if config.getint('DATABASE', 'port') not in port_range:
-    print('[DATABASE][port] is not a valid port!')
-
-if config.getint('MANAGER', 'port') not in port_range:
-    print('[MANAGER][port] is not a valid port!')
-
-if config.getint('NGINX', 'port') not in port_range:
-    print('[NGINX][port] is not a valid port!')
-
 
 print('Configuration complete!')

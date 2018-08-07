@@ -8,7 +8,6 @@ import subprocess
 
 from cryptography.fernet import Fernet
 from distutils.spawn import find_executable
-from flask import render_template
 
 from remu.models import User
 
@@ -61,6 +60,7 @@ def render_jinja(template_loc, file_name, **context):
         loader=jinja2.FileSystemLoader(template_loc+'/')
     ).get_template(file_name).render(context)
 
+
 try:
     config = ConfigParser.SafeConfigParser()
     config.read('config.ini')
@@ -105,11 +105,10 @@ if find_executable('mongod'):
         port = config.get('DATABASE', 'port')
         verbose = config.get('DATABASE', 'verbose')
 
-        template = './setup/mongodb.conf'
-
         with open('/etc/mongodb.conf', 'w') as f:
-            text = render_template(
-                template,
+            text = render_jinja(
+                'setup',
+                'mongodb.conf',
                 bind_ip=addr,
                 port=port,
                 verbose=verbose
@@ -121,10 +120,14 @@ if find_executable('mongod'):
         print('... failed to write mongodb.conf file!')
 
     try:
-        subprocess.check_call(["systemctl", "restart", "mongodb"])
+        subprocess.check_call(["systemctl", "restart", "mongod"])
         print('... mongodb service restarted')
     except subprocess.CalledProcessError:
-        print('... failed to restart mongodb service!')
+        try:
+            subprocess.check_call(["systemctl", "restart", "mongodb"])
+            print('... mongodb service restarted')
+        except subprocess.CalledProcessError:
+            print('... failed to restart mongodb service!')
 
 
     # We need to create a user for the administration
@@ -153,8 +156,9 @@ if find_executable('nginx'):
         template = './setup/nginx.conf'
 
         with open('/etc/nginx/nginx.conf', 'w') as f:
-            text = render_template(
-                template,
+            text = render_jinja(
+                'setup',
+                'nginx.conf',
                 address=addr,
                 port=port,
                 static=static

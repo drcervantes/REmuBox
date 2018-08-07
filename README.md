@@ -71,7 +71,7 @@ The dependencies for each component are as follows:
 This implies that only the needed software is required to be installed on remote components. For example, a standalone server node requires only VirtualBox to be installed.
 
 ### 2.2 Installing the Virtual Environment
-The process of installing the Python depencies is straightforward thanks to pipenv. In the root directory of REmuBox, run the following command:
+The process of installing the Python dependencies is straightforward thanks to pipenv. In the root directory of REmuBox, run the following command:
 
 ```bash
 pipenv install
@@ -80,6 +80,14 @@ pipenv install
 Pipenv provides two methods for interacting with the virtual environment:
 1. `pipenv run` will spawn a command installed into the virtual environment.
 2. `pipenv shell` will spawn a shell within the virtual environment.
+
+At this point, it is important to create a .env file which will contain the environment variables needed for the VirtualBox SDK install. This file must be in the REmuBox root directory and these variables will only be set inside the virtual environment.
+
+```bash
+echo "VBOX_INSTALL_PATH=$(which virtualbox)" > .env
+echo "VBOX_SDK_PATH=$(pwd)/sdk/" >> .env
+echo "VBOX_PROGRAM_PATH=/usr/lib/virtualbox/" >> .env
+```
 
 ### 2.3 Installing VirtualBox
 Get the latest version of VirtualBox.

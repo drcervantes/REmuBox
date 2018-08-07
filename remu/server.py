@@ -41,9 +41,10 @@ class WorkshopManager():
                 self.remove_unit(sid)
 
         vm_dir = self.vbox.system_properties.default_machine_folder
-        for file in scandir(vm_dir):
-            if file.is_dir() and 'Units' in file.name:
-                shutil.rmtree(os.path.join(vm_dir, file.name))
+        if os.path.exists(vm_dir):
+            for file in scandir(vm_dir):
+                if file.is_dir() and 'Units' in file.name:
+                    shutil.rmtree(os.path.join(vm_dir, file.name))
 
 
     def _set_group(self, machine, group):

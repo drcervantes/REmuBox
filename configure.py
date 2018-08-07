@@ -228,4 +228,8 @@ if find_executable('nginx'):
     except subprocess.CalledProcessError:
         print('... failed to restart nginx service!')
 
+with open('config.ini', 'wb') as f:
+    config.write(f)
+    print('... configuration file rewritten')
+
 print('Configuration complete!')

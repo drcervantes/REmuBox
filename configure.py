@@ -3,7 +3,9 @@ import mongoengine
 import socket
 import sys
 import os
+import jinja2
 
+from cryptography.fernet import Fernet
 from distutils.spawn import find_executable
 from flask import render_template
 
@@ -52,6 +54,11 @@ def sans_input(prompt, type_, default, min_=None, max_=None, ip=False):
             return ui
 
         return ui
+
+def render_jinja(template_loc, file_name, **context):
+    return jinja2.Environment(
+        loader=jinja2.FileSystemLoader(template_loc+'/')
+    ).get_template(file_name).render(context)
 
 try:
     config = ConfigParser.SafeConfigParser()

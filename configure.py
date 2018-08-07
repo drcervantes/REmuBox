@@ -6,6 +6,7 @@ import os
 import jinja2
 import subprocess
 import io
+import shutil
 
 from cryptography.fernet import Fernet
 from distutils.spawn import find_executable
@@ -210,5 +211,13 @@ if find_executable('nginx'):
         print('... nginx service restarted')
     except subprocess.CalledProcessError:
         print('... failed to restart nginx service!')
+
+try:
+    src = os.path.join(os.getcwd(), 'setup', 'rdp_hook.js')
+    dst = '/etc/nginx/rdp_hook.js'
+    shutil.copyfile(src, dst)
+    print("... copied rdp_hook.js to nginx root")
+except Exception:
+    print("... failed to copy rdp_hook.js to nginx root!")
 
 print('Configuration complete!')

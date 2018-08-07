@@ -187,6 +187,14 @@ if find_executable('mongod'):
 
 # Create the NGINX configuration file
 if find_executable('nginx'):
+    with open('/etc/nginx/rdp_maps.conf', 'w'):
+        print('... created empty rdp_maps.conf')
+        pass
+
+    with open('/etc/nginx/rdp_upstreams.conf', 'w'):
+        print('... created empty rdp_upstreams.conf')
+        pass
+
     try:
         src = os.path.join(os.getcwd(), 'setup', 'rdp_hook.js')
         dst = '/etc/nginx/rdp_hook.js'

@@ -230,24 +230,38 @@ def workshops():
 def add_workshop():
     form = forms.AddWorkshopForm()
     if form.validate_on_submit():
-        l.debug("Materials: %s", str(form.materials.data))
-        if bool(form.materials.data[0]):
-            base_dir = os.path.join(config["REMU"]["workshops"], form.name.data, "materials")
-            if not os.path.exists(base_dir):
-                os.mkdir(base_dir)
+        # What if the workshop already exists
+        # 1. There should be entry in db
+        # 2. There should be a folder for the workshop
+        # Otherwise flash error message
 
+        # create workshop folder if doesnt exist
+        _dir = os.path.join(config["REMU"]["workshops"], form.name.data)
+        if not os.path.exists(_dir):
+            l.debug("No workshop folder found. Creating at: %s", _dir)
+            os.mkdir(_dir)
+
+        # create materials folder if doesnt exist
+        _dir = os.path.join(config["REMU"]["workshops"], form.name.data)
+        if not os.path.exists(_dir):
+            l.debug("No workshop folder found. Creating at: %s", _dir)
+            os.mkdir(_dir)
+
+        if bool(form.materials.data[0]):
             for doc in form.materials.data:
                 secured_name = secure_filename(doc.filename)
                 doc.save(os.path.join(base_dir, secured_name))
 
-        db.insert_workshop(
-            form.name.data,
-            form.display.data,
-            form.description.data,
-            form.mini.data,
-            form.maxi.data,
-            form.enabled.data
-        )
+        try:
+            db.insert_workshop(
+                form.name.data,
+                form.display.data,
+                form.description.data,
+                form.mini.data,
+                form.maxi.data,
+                form.enabled.data
+            )
+        except 
 
         return redirect(url_for('admin.workshops'))
     return render_template('add_workshop.html', form=form)
@@ -266,7 +280,7 @@ def edit_workshop(oid):
             enabled=form.enabled.data
         )
         
-        if bool(form.materials.data[0]):
+        if bool(form.materials.data):
             base_dir = os.path.join(config["REMU"]["workshops"], form.name.data, "materials")
             if not os.path.exists(base_dir):
                 os.mkdir(base_dir)

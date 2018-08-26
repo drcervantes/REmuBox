@@ -110,12 +110,28 @@
             </ul>
           </div>
         </div>
+        <main class="main-content bgc-grey-100">
+          <div id="mainContent">
+            <div class="full-container">
+              
+              {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div class="bgc-white bd bdrs-3 p-20 mB-20">
+                  <div class="row">
+                    <ul>
+                    {% for message in messages %}
+                      <li>{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                </div>
+                </div>
+                {% endif %}
+              {% endwith %}
 
-        {% block body %}{% endblock %}
-        
-        <footer class="bdT ta-c p-30 lh-0 fsz-sm c-grey-600">
-          <span>Copyright © 2018</span>
-        </footer>
+            {% block body %}{% endblock %}
+            </div>
+          </div>
+        </main>
       </div>
     </div>
     <script type="text/javascript" src="{{ url_for('static', filename='vendor.js') }}"></script>

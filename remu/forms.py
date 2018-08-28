@@ -18,7 +18,7 @@ class AddServerForm(FlaskForm):
 
 class AddWorkshopForm(FlaskForm):
     name        = StringField('Workshop Folder', validators=[DataRequired()])
-    display     = StringField('Displpay Name')
+    display     = StringField('Display Name')
     description = TextAreaField('Description', validators=[DataRequired()])
     mini        = StringField('Min Instances', validators=[DataRequired()])
     maxi        = StringField('Max Instances', validators=[DataRequired()])
